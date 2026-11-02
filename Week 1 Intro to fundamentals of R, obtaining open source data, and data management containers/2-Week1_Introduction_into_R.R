@@ -440,10 +440,10 @@ my_target[1:2,]
 ###################################################
 ### code chunk number 71: Exercise 4.2 (eval = FALSE)
 ###################################################
-## ## Online import of molecular weight table
-## my_mw <- read.delim(file="http://faculty.ucr.edu/~tgirke/Documents/R_BioCond/Samples/MolecularWeight_tair7.xls", header=T, sep="\t")
+# Online import of molecular weight table
+my_mw <- read.delim(file="http://faculty.ucr.edu/~tgirke/Documents/R_BioCond/Samples/MolecularWeight_tair7.xls", header=T, sep="\t")
 ## ## Online import of subcelluar targeting table
-## my_target <- read.delim(file="http://faculty.ucr.edu/~tgirke/Documents/R_BioCond/Samples/TargetP_analysis_tair7.xls", header=T, sep="\t")
+my_target <- read.delim(file="http://faculty.ucr.edu/~tgirke/Documents/R_BioCond/Samples/TargetP_analysis_tair7.xls", header=T, sep="\t")
 
 ###################################################
 ### code chunk number 72: Exercise 4.3

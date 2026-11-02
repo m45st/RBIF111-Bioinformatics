@@ -54,6 +54,7 @@ for ( i in 1:3 ) x+i
 x <- 1
 for ( i in 1:3 ) print(x+i)
 
+
 ######################
 #### Code Chunk 7 ####
 ######################
@@ -494,9 +495,9 @@ library(limma)
 ######################
 #### Code Chunk 2 ####
 ######################
-# if (!require("BiocManager", quietly = TRUE))
-#   install.packages("BiocManager")
-# BiocManager::install("ALL")
+if (!require("BiocManager", quietly = TRUE))
+   install.packages("BiocManager")
+ BiocManager::install("ALL")
 library(ALL)
 data(ALL)
 
@@ -624,17 +625,6 @@ boxplot(age~sex,ALL)
 ######################
 #### Code Chunk 1 ####
 ######################
-# Install required packages if not already installed:
-# if (!require("BiocManager", quietly = TRUE))
-#     install.packages("BiocManager")
-# BiocManager::install("DESeq2")
-# BiocManager::install("limma")
-# BiocManager::install("GEOquery")
-# BiocManager::install("org.Hs.eg.db")
-# install.packages("data.table")
-# install.packages("DT")
-library(DESeq2); library(limma); library(GEOquery)
-library(org.Hs.eg.db); library(data.table); library(DT)
 
 ######################
 #### Code Chunk 2 ####
