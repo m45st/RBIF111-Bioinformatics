@@ -411,10 +411,10 @@ i <- 1; while(i < 4) { print(i); i <- i+1 }
 #### Code Chunk 5 ####
 ######################
 my.max <-function ( x, na.rm = F ) {
-  x.max <- Inf
+  x.max <- -Inf
   for ( xx in x ) {
     if ( is.na(xx) ) {
-      if ( na.rm ) {
+      if ( na.rm = T ) {
         next
       } else {
         return(NA)
@@ -442,7 +442,7 @@ my.max(10:1)
 my.max(c(1,NA,3))
 my.max(c(1,NA,3),T)
 
-######################
+ ######################
 #### Code Chunk 8 ####
 ######################
 my.max(na.rm=T,x=c(1,NA,3)) # binding by name: order of arguments no longer matters

@@ -93,13 +93,17 @@ clrs[c(T,F)]
 names(y) <- clrs; y
 
 
+dfr = c(1,1,2,1 , NA)
+dfr
+dfr[2]
 
+tot =0
+for( e in dfr){
+  tot = tot+e
+}
+df_mean = tot / length(dfr)
 
-
-
-
-
-
+mean(dfr)
 
 
 

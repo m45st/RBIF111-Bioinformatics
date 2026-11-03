@@ -9,22 +9,49 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## 1a: mean function without NA handling
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r}
+v = c(1:50, NA, 55)
+vector_mean <- function( df){
+  tot = 0
+  for ( element in df){
+    tot = tot + element
+  }
+  return( tot / length(df))
+}
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+vector_mean( v)
 
-```{r cars}
-summary(cars)
 ```
 
-## Including Plots
+# 1b: mean with NA handled
+```{r}
+super_vector_mean <- function( vector , na.rm = F ){
+  tot = 0
+  for (element in vector){
+    if( is.na(element)){
+      if(na.rm){
+        next
+      }else{
+        return( NA)
+      }
+    }
+    tot = tot +element
+  }
+   n = sum( !is.na(vector))
+  return( tot / n) 
+}
 
-You can also embed plots, for example:
+super_vector_mean(v , na.rm = T)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+mean( v , na.rm =F)
+
 ```
+##### My loop base function for "mean" are expected to agree because I included lines that handle presence of NA values within passed vectore during iteration. The final sample size is also calculated taking NAs into consideration, hence the only actual values make up the final sample size.
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# 1c:
+
+
+

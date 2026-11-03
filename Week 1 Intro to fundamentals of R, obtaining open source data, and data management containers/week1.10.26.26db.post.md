@@ -59,3 +59,21 @@ Discuss if there are any overlaps in your strengths and weaknesses with statisti
 Hello everyone,
 This is my first year in the MS bioinformatics program. My name is Martin, I am based in NYC and I support a biostatistics course at a community college. I’ve had a beginner to intermediate interaction with R and I am hoping to deepen my understanding through this course, especially with regard to genomics data and other bioinformatics-related data. 
 I look forward to interacting and learning from you all.
+
+
+#------------------------
+
+
+by Toni Buchanan - Friday, October 30, 2026, 8:06 PM
+Question 1
+My experience with R is limited to what I have learned in my first semester of the Bioinformatics master’s program. My first impression of R was that it was intimidating and learning how to use it was going to be a challenge, as I had no experience with programming languages. Initially, the RStudio interface was very confusing as I tried to navigate all the different panes and the different information they display. I struggled with knowing if my code had executed correctly and distinguishing between files and objects in the Environment pane. What I like most about R are the packages that are available for biological and statistical analysis and visualization. I think my biggest challenge with R is understanding when to use the different functions and what their associated arguments mean.
+I have used R before to complete several assignments, which all used different types of biological data. I used R in my previous course for microbiome analysis, which involved the use of operational taxonomic unit data to examine alpha diversity and microbial abundance of the samples, and then generated heatmaps to compare these samples. This assignment helped me to understand how the differences in microbial communities can be investigated and useful, informative visualizations can be generated using R. I also used R previously to analyze results from BLAST by calculating the mean E-values, identifying the highest bit score, and looking at the correlations between alignment measurements. The assignments highlighted some of the different ways that R can be used in analysis, sequence comparison and genetic research, which are skills I think are relevant to my long-term goal of pursuing a career in genetic screening for variants associated with inherited disorders.
+
+Question 2
+My experience with statistical analysis comes from one class during my undergraduate studies in forensic science and the recent exposure described above in the first semester of this master’s program. The main aspects of statistics I struggle with are choosing the right statistical method to address the question I am investigating and determining if the results I have obtained are statistically significant. On the other hand, I feel comfortable with basic topics like mean, median, and mode, as well as organizing biological data, which I just think comes from my love of organization and general process optimization.
+Statistics play an important role in daily healthcare, especially in genetic carrier screening. For example, statistical analysis is used in investigating the genetic variations among populations, estimating carrier frequencies, and evaluating the tests developed for carrier screening in terms of their specificity and sensitivity. These are all important for investigating and addressing important biological questions. They are also useful in identifying gaps that may be present in the current approaches being used in genetic screening and variant detection analysis. I hope to apply the skills I learn from this course in variant analysis and interpretation, and in evaluating genetic carrier screening results, to hopefully support and facilitate informed healthcare decisions.
+
+#Resp:
+
+Hello @Toni,
+Thanks for sharing your experi
