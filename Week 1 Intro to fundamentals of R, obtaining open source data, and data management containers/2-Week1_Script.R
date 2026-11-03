@@ -414,7 +414,7 @@ my.max <-function ( x, na.rm = F ) {
   x.max <- -Inf
   for ( xx in x ) {
     if ( is.na(xx) ) {
-      if ( na.rm = T ) {
+      if ( na.rm  ) {
         next
       } else {
         return(NA)

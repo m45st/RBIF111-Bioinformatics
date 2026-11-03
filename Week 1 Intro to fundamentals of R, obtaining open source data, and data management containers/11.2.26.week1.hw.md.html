@@ -357,8 +357,8 @@ display: none;
 </div>
 
 
-<div id="mean-function-without-na-handling" class="section level2">
-<h2>mean function without NA handling</h2>
+<div id="a-mean-function-without-na-handling" class="section level2">
+<h2>1a: mean function without NA handling</h2>
 <pre class="r"><code>v = c(1:50, NA, 55)
 vector_mean &lt;- function( df){
   tot = 0
@@ -372,7 +372,7 @@ vector_mean( v)</code></pre>
 <pre><code>## [1] NA</code></pre>
 </div>
 <div id="b-mean-with-na-handled" class="section level1">
-<h1>b: mean with NA handled</h1>
+<h1>1b: mean with NA handled</h1>
 <pre class="r"><code>super_vector_mean &lt;- function( vector , na.rm = F ){
   tot = 0
   for (element in vector){
@@ -386,20 +386,242 @@ vector_mean( v)</code></pre>
     tot = tot +element
   }
    n = sum( !is.na(vector))
-  return( tot /n)
+  return( tot / n) 
 }
 
 super_vector_mean(v , na.rm = T)</code></pre>
 <pre><code>## [1] 26.07843</code></pre>
 <pre class="r"><code>mean( v , na.rm =F)</code></pre>
 <pre><code>## [1] NA</code></pre>
-<div id="my-loop-base-function-for-mean-are-expected-to-agree-because-i-included-lines-that-handle-presence-of-na-values-within-passed-vectore-during-iteration.-the-final-sample-size-is-also-calculated-taking-nas-into-consideration-hence-the-only-actual-values-make-up-the-final-sample-size." class="section level5">
+<div id="my-loop-base-function-for-mean-are-expected-to-agree-because-i-included-lines-that-handle-presence-of-na-values-within-passed-vector-during-iteration.-the-final-sample-size-is-also-calculated-by-first-turning-the-nas-into-logicals-truefalse-then-summing-which-adds-all-the-trues1s-to-produce-actual-sample-size-since-the-falses-will-be-0s." class="section level5">
 <h5>My loop base function for “mean” are expected to agree because I
-included lines that handle presence of NA values within passed vectore
-during iteration. The final sample size is also calculated taking NAs
-into consideration, hence the only actual values make up the final
-sample size.</h5>
+included lines that handle presence of NA values within passed vector
+during iteration. The final sample size is also calculated by first
+turning the NAs into logicals ( TRUE/FALSE) then summing , which adds
+all the TRUEs(1s) to produce actual sample size since the FALSEs will be
+0s.</h5>
 </div>
+</div>
+<div id="c-accessing-data-from-duckdb-repository" class="section level1">
+<h1>1c: accessing data from DuckDB repository</h1>
+<pre class="r"><code>library(repoquet)
+library(DBI)
+library(duckdb)
+
+config_path &lt;- &quot;repoquet_public_example/repository_config.R&quot;
+cfg &lt;- load_repository_config( config_path)
+temp_dir &lt;- file.path(cfg$FormattedDBPath, &quot;duckdb_temp&quot;)
+dir.create(temp_dir, recursive = TRUE, showWarnings = FALSE)
+
+con &lt;- open_duckdb(
+  FormattedDBPath = cfg$FormattedDBPath,
+  DBName = cfg$DBName,
+  TempDirPath = temp_dir,
+  GB = cfg$DuckDB_GB,
+  ReadOnly = TRUE
+)</code></pre>
+<pre><code>## duckdb is storing downloaded extensions and secrets under ~/.duckdb:
+## ℹ /Users/md/.duckdb
+## This persists across sessions and is shared with the DuckDB CLI and other clients.
+## ℹ Run duckdb(shared_home = FALSE) to use a temporary directory instead.
+## ℹ See ?duckdb_storage for details and alternatives.</code></pre>
+<pre class="r"><code>nhanes_tables&lt;- DBI::dbListTables(con)
+nhanes_tables &lt;- sort(grep(&quot;^NHANES_&quot; , nhanes_tables, value = TRUE, ignore.case = TRUE))
+head(nhanes_tables, 5)</code></pre>
+<pre><code>## [1] &quot;NHANES_AA&quot;  &quot;NHANES_AAS&quot; &quot;NHANES_ACQ&quot; &quot;NHANES_AGP&quot; &quot;NHANES_AGQ&quot;</code></pre>
+<pre class="r"><code>nhanes_table &lt;- nhanes_tables[32]
+DBI::dbGetQuery(con, paste0(&quot;DESCRIBE &quot;, nhanes_table))</code></pre>
+<pre><code>##     column_name column_type null  key default extra
+## 1          SEQN      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 2      BMAEXLEN      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 3      BMAEXSTS      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 4      BMAEXCMT      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 5         BMXWT      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 6         BMIWT      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 7      BMXRECUM      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 8      BMIRECUM      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 9       BMXHEAD      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 10      BMIHEAD      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 11        BMXHT      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 12        BMIHT      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 13       BMXBMI      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 14       BMXLEG      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 15       BMILEG      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 16      BMXCALF      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 17      BMICALF      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 18      BMXARML      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 19      BMIARML      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 20      BMXARMC      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 21      BMIARMC      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 22     BMXWAIST      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 23     BMIWAIST      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 24     BMXTHICR      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 25     BMITHICR      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 26       BMXTRI      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 27       BMITRI      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 28       BMXSUB      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 29       BMISUB      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 30       BMAAMP      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 31     BMAUREXT      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 32     BMAUPREL      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 33     BMAULEXT      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 34     BMAUPLEL      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 35     BMALOREX      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 36     BMALORKN      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 37     BMALLEXT      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 38     BMALLKNE      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 39     BMDSTATS      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 40     BMDRECUF      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 41      BMDSUBF      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 42     BMDTHICF      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 43      BMDLEGF      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 44     BMDARMLF      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 45     BMDCALFF      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 46      BMDBMIC      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 47      BMXSAD1      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 48      BMXSAD2      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 49      BMXSAD3      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 50      BMXSAD4      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 51     BMDAVSAD      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 52     BMDSADCM      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 53       BMXHIP      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 54       BMIHIP      DOUBLE  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;
+## 55 SURVEY_CYCLE     VARCHAR  YES &lt;NA&gt;    &lt;NA&gt;  &lt;NA&gt;</code></pre>
+<pre class="r"><code>bmi_data &lt;- DBI::dbGetQuery(con, paste0( &quot;SELECT * FROM &quot;, DBI::dbQuoteIdentifier(con, nhanes_table)))
+
+head(bmi_data)</code></pre>
+<pre><code>##   SEQN BMAEXLEN BMAEXSTS BMAEXCMT BMXWT BMIWT BMXRECUM BMIRECUM BMXHEAD BMIHEAD
+## 1    1      289        1       NA  12.5     3     93.2       NA      NA      NA
+## 2    2      376        1       NA  75.4    NA       NA       NA      NA      NA
+## 3    3      199        1       NA  32.9    NA       NA       NA      NA      NA
+## 4    4      170        1       NA  13.3    NA     87.1       NA      NA      NA
+## 5    5      277        1       NA  92.5    NA       NA       NA      NA      NA
+## 6    6      252        1       NA  59.2    NA       NA       NA      NA      NA
+##   BMXHT BMIHT BMXBMI BMXLEG BMILEG BMXCALF BMICALF BMXARML BMIARML BMXARMC
+## 1  91.6    NA  14.90     NA     NA      NA      NA    18.6      NA    15.2
+## 2 174.0    NA  24.90     NA      1    37.5      NA    38.2      NA    29.8
+## 3 136.6    NA  17.63   34.1     NA    29.0      NA    25.5      NA    19.7
+## 4    NA    NA     NA     NA     NA      NA      NA    20.4      NA    16.4
+## 5 178.3    NA  29.10   45.2     NA    42.6      NA    39.7      NA    35.8
+## 6 162.0    NA  22.56   39.7     NA    34.0      NA    34.5      NA    26.0
+##   BMIARMC BMXWAIST BMIWAIST BMXTHICR BMITHICR BMXTRI BMITRI BMXSUB BMISUB
+## 1      NA     45.7       NA       NA       NA    8.3     NA    5.0     NA
+## 2      NA     98.0       NA       NA        1   12.8     NA   20.4     NA
+## 3      NA     64.7       NA     38.2       NA    8.0     NA    6.5     NA
+## 4      NA       NA       NA       NA       NA   10.8     NA   10.2     NA
+## 5      NA     99.9       NA     56.2       NA   17.4     NA   38.6     NA
+## 6      NA     81.6       NA     47.0       NA   20.3     NA   16.8     NA
+##   BMAAMP BMAUREXT BMAUPREL BMAULEXT BMAUPLEL BMALOREX BMALORKN BMALLEXT
+## 1      2       NA       NA       NA       NA       NA       NA       NA
+## 2      2       NA       NA       NA       NA       NA       NA       NA
+## 3      2       NA       NA       NA       NA       NA       NA       NA
+## 4      2       NA       NA       NA       NA       NA       NA       NA
+## 5      2       NA       NA       NA       NA       NA       NA       NA
+## 6      2       NA       NA       NA       NA       NA       NA       NA
+##   BMALLKNE BMDSTATS BMDRECUF BMDSUBF BMDTHICF BMDLEGF BMDARMLF BMDCALFF BMDBMIC
+## 1       NA       NA       NA      NA       NA      NA       NA       NA      NA
+## 2       NA       NA       NA      NA       NA      NA       NA       NA      NA
+## 3       NA       NA       NA      NA       NA      NA       NA       NA      NA
+## 4       NA       NA       NA      NA       NA      NA       NA       NA      NA
+## 5       NA       NA       NA      NA       NA      NA       NA       NA      NA
+## 6       NA       NA       NA      NA       NA      NA       NA       NA      NA
+##   BMXSAD1 BMXSAD2 BMXSAD3 BMXSAD4 BMDAVSAD BMDSADCM BMXHIP BMIHIP SURVEY_CYCLE
+## 1      NA      NA      NA      NA       NA       NA     NA     NA    1999-2000
+## 2      NA      NA      NA      NA       NA       NA     NA     NA    1999-2000
+## 3      NA      NA      NA      NA       NA       NA     NA     NA    1999-2000
+## 4      NA      NA      NA      NA       NA       NA     NA     NA    1999-2000
+## 5      NA      NA      NA      NA       NA       NA     NA     NA    1999-2000
+## 6      NA      NA      NA      NA       NA       NA     NA     NA    1999-2000</code></pre>
+<pre class="r"><code>str(bmi_data)</code></pre>
+<pre><code>## &#39;data.frame&#39;:    119926 obs. of  55 variables:
+##  $ SEQN        : num  1 2 3 4 5 6 7 8 9 10 ...
+##  $ BMAEXLEN    : num  289 376 199 170 277 252 303 257 178 218 ...
+##  $ BMAEXSTS    : num  1 1 1 1 1 1 1 1 1 1 ...
+##  $ BMAEXCMT    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXWT       : num  12.5 75.4 32.9 13.3 92.5 ...
+##  $ BMIWT       : num  3 NA NA NA NA NA NA NA NA NA ...
+##  $ BMXRECUM    : num  93.2 NA NA 87.1 NA NA NA NA NA NA ...
+##  $ BMIRECUM    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXHEAD     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMIHEAD     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXHT       : num  91.6 174 136.6 NA 178.3 ...
+##  $ BMIHT       : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXBMI      : num  14.9 24.9 17.6 NA 29.1 ...
+##  $ BMXLEG      : num  NA NA 34.1 NA 45.2 39.7 43 41.6 42.2 46.6 ...
+##  $ BMILEG      : num  NA 1 NA NA NA NA NA NA NA NA ...
+##  $ BMXCALF     : num  NA 37.5 29 NA 42.6 34 37.2 30 32.7 43.7 ...
+##  $ BMICALF     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXARML     : num  18.6 38.2 25.5 20.4 39.7 34.5 38.1 36.7 32 43 ...
+##  $ BMIARML     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXARMC     : num  15.2 29.8 19.7 16.4 35.8 26 31.7 20.1 22.1 37.6 ...
+##  $ BMIARMC     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXWAIST    : num  45.7 98 64.7 NA 99.9 81.6 90.7 64.1 64.6 108 ...
+##  $ BMIWAIST    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXTHICR    : num  NA NA 38.2 NA 56.2 47 55.7 39.1 45.3 64 ...
+##  $ BMITHICR    : num  NA 1 NA NA NA NA NA NA NA NA ...
+##  $ BMXTRI      : num  8.3 12.8 8 10.8 17.4 20.3 26.4 6.2 11.1 15.5 ...
+##  $ BMITRI      : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXSUB      : num  5 20.4 6.5 10.2 38.6 16.8 34.2 5.2 7.6 26.6 ...
+##  $ BMISUB      : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMAAMP      : num  2 2 2 2 2 2 2 2 2 2 ...
+##  $ BMAUREXT    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMAUPREL    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMAULEXT    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMAUPLEL    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMALOREX    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMALORKN    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMALLEXT    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMALLKNE    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDSTATS    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDRECUF    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDSUBF     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDTHICF    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDLEGF     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDARMLF    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDCALFF    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDBMIC     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXSAD1     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXSAD2     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXSAD3     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXSAD4     : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDAVSAD    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMDSADCM    : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMXHIP      : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ BMIHIP      : num  NA NA NA NA NA NA NA NA NA NA ...
+##  $ SURVEY_CYCLE: chr  &quot;1999-2000&quot; &quot;1999-2000&quot; &quot;1999-2000&quot; &quot;1999-2000&quot; ...</code></pre>
+<pre class="r"><code>#column to calculate mean from 
+weight_in_kg &lt;- bmi_data$BMXWT
+super_vector_mean( weight_in_kg , na.rm = T)</code></pre>
+<pre><code>## [1] 62.86981</code></pre>
+<pre class="r"><code>#regular mean function
+mean( weight_in_kg , na.rm = T)</code></pre>
+<pre><code>## [1] 62.86981</code></pre>
+</div>
+<div id="d-testing-for-correlation-between-the-bmxbmi-vs-bmxwaist" class="section level1">
+<h1>1d: Testing for correlation between the BMXBMI vs BMXWAIST</h1>
+<p>Ho: correlation between body mass index and waist circumference = 0
+Ha: correlation between body mass index and waist circumference != 0</p>
+<pre class="r"><code>body_mass_index &lt;- bmi_data $BMXBMI
+waist_circum &lt;- bmi_data $ BMXWAIST
+
+cor.test( body_mass_index , waist_circum)</code></pre>
+<pre><code>## 
+##  Pearson&#39;s product-moment correlation
+## 
+## data:  body_mass_index and waist_circum
+## t = 827.9, df = 105025, p-value &lt; 2.2e-16
+## alternative hypothesis: true correlation is not equal to 0
+## 95 percent confidence interval:
+##  0.9303913 0.9319985
+## sample estimates:
+##       cor 
+## 0.9311994</code></pre>
+<p>From the cor.test results; there’s a positive correlation ( r
+=0.9311994 ) between body mass index and waist circumference. As BMI
+increases, waist circumference also increases. t = 827.9 and p-value
+&lt; 2.2e-16 suggest there’s evidence for the alternative hypothesis.
+This shows relationship does not imply causation, but rather suggest
+it’s worth investigating further.</p>
 </div>
 
 

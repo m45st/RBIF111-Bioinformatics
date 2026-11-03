@@ -48,10 +48,77 @@ super_vector_mean(v , na.rm = T)
 mean( v , na.rm =F)
 
 ```
-##### My loop base function for "mean" are expected to agree because I included lines that handle presence of NA values within passed vectore during iteration. The final sample size is also calculated taking NAs into consideration, hence the only actual values make up the final sample size.
+##### My loop base function for "mean" are expected to agree because I included lines that handle presence of NA values within passed vector during iteration. The final sample size is also calculated by first turning the  NAs into  logicals ( TRUE/FALSE) then summing , which adds all the TRUEs(1s) to produce actual sample size since the FALSEs will be 0s.
+
+# 1c: accessing data from DuckDB repository
+
+```{r}
+library(repoquet)
+library(DBI)
+library(duckdb)
+
+config_path <- "repoquet_public_example/repository_config.R"
+cfg <- load_repository_config( config_path)
+temp_dir <- file.path(cfg$FormattedDBPath, "duckdb_temp")
+dir.create(temp_dir, recursive = TRUE, showWarnings = FALSE)
+
+con <- open_duckdb(
+  FormattedDBPath = cfg$FormattedDBPath,
+  DBName = cfg$DBName,
+  TempDirPath = temp_dir,
+  GB = cfg$DuckDB_GB,
+  ReadOnly = TRUE
+)
 
 
-# 1c:
+nhanes_tables<- DBI::dbListTables(con)
+nhanes_tables <- sort(grep("^NHANES_" , nhanes_tables, value = TRUE, ignore.case = TRUE))
+head(nhanes_tables, 5)
+
+
+
+nhanes_table <- nhanes_tables[32]
+DBI::dbGetQuery(con, paste0("DESCRIBE ", nhanes_table))
+
+
+bmi_data <- DBI::dbGetQuery(con, paste0( "SELECT * FROM ", DBI::dbQuoteIdentifier(con, nhanes_table)))
+
+head(bmi_data)
+str(bmi_data)
+
+#column to calculate mean from 
+weight_in_kg <- bmi_data$BMXWT
+super_vector_mean( weight_in_kg , na.rm = T)
+#regular mean function
+mean( weight_in_kg , na.rm = T)
+
+
+```
+
+# 1d:  Testing for correlation between the BMXBMI vs BMXWAIST
+
+Ho: correlation between body mass index and waist circumference = 0
+Ha: correlation between body mass index and waist circumference != 0
+
+
+```{r}
+body_mass_index <- bmi_data $BMXBMI
+waist_circum <- bmi_data $ BMXWAIST
+
+cor.test( body_mass_index , waist_circum)
+
+
+```
+From the cor.test results;
+there's a positive correlation ( r =0.9311994 ) between body mass index and waist circumference.
+As BMI increases, waist circumference also increases.
+t = 827.9 and p-value < 2.2e-16 suggest there's evidence for the alternative hypothesis. This shows relationship does not imply causation, but rather suggest it's worth investigating further.
+
+
+
+
+
+
 
 
 
