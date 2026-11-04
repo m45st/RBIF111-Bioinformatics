@@ -76,4 +76,4 @@ Statistics play an important role in daily healthcare, especially in genetic car
 #Resp:
 
 Hello @Toni,
-Thanks for sharing your experi
+Thanks for sharing your experience and how your journey has been with R. It's inspiring and i can relate to your situation very much. 
