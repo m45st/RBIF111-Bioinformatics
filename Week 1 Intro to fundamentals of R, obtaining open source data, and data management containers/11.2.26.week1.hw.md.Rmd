@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = T, message = F, warning = F)
 ```
 
 ## 1a: mean function without NA handling
@@ -190,7 +190,17 @@ GEODataDownload <- function(DS, gpl, gsm, PlateAnnotInfo, GenerateMetaData, Tech
     tbl <- as.matrix(data.table::fread(path, header=T, colClasses="integer"), rownames="GeneID")
     exraw <- tbl 
     apath <- paste(urld, "type=rnaseq_counts", "file=Human.GRCh38.p13.annot.tsv.gz", sep="&")
-    annot <- data.table::fread(apath, header=T, quote="", stringsAsFactors=F, data.table=F)
+    annot <- tryCatch(data.table::fread(apath, header=T, quote="", stringsAsFactors=F, data.table=F),
+                      error = function(e) NULL)
+    ## FALLBACK (only change to the notes' function): if NCBI serves a captcha page instead of the
+    ## annotation file, use NCBI's Homo_sapiens.gene_info (the same GeneID/Symbol/description source)
+    if(is.null(annot) || !all(c("GeneID", "Symbol", "Description") %in% names(annot))){
+      annot <- data.table::fread("https://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz",
+                                 header=T, quote="", stringsAsFactors=F, data.table=F)
+      names(annot)[names(annot) == "#tax_id"] <- "tax_id"
+      annot <- annot[, c("GeneID", "Symbol", "description")]
+      names(annot)[3] <- "Description"
+    }
     rownames(annot) <- annot$GeneID
     sml <- strsplit(gsms, split="")[[1]]
     sel <- which(sml != "X")
@@ -224,6 +234,9 @@ GEODataDownload <- function(DS, gpl, gsm, PlateAnnotInfo, GenerateMetaData, Tech
 }
 
 ```
+
+## 2a: downloading and saving data as .txt in working directory
+
 ```{r}
 #loading data
 gse <- getGEO("GSE226151")
@@ -236,7 +249,96 @@ RNAseqData <- GEODataDownload(DS = "GSE226151",
                               PlateAnnotInfo = "Only needed if the data was generated using MicroArrays",
                               GenerateMetaData = "Only needed if the data was generated using MicroArrays",
                               Technology = "RNAseq")
+
+fwrite(RNAseqData, "GSE226151_Sarcopenia_data.txt", sep = "\t")
+
+gse226151_data <- fread("GSE226151_Sarcopenia_data.txt", sep = "\t")
+
+head(gse226151_data)
+
+
 ```
+
+
+## 2b: adding column to data frame
+
+
+```{r}
+
+gse226151_data $ Subset_Comparison <- "Sarcopenia-HealthyAged"
+
+```
+An additional column describing the treatment comparison, it becomes easier to filter when making multiple analysis especially on same genes across multiple contrast and becomes a unique character for "grouping by" when combining multiple differential expression analyses.
+
+## 2c: Average expression level for each sample (column) in the raw expression
+
+```{r}
+ dfr_raw <- gse226151_data[,7:65]
+
+ dfr_raw <- gse226151_data[,7:64]
+ raw_averages <- colMeans( dfr_raw , na.rm = T)
+ 
+ #histogram visualization
+ hist(raw_averages, main = "i. Histogram of per-sample mean counts", xlab = "Mean raw count")
+
+ # Boxplot
+ 
+ boxplot( raw_averages , main = "boxplot of Raw expression means " , ylab = " mean counts")
+ 
+# Stripchart
+ stripchart( raw_averages , main = "stripchart of raw average expression level" , xlab = "means counts")
+ 
+#Dotchart
+ 
+ dotchart( raw_averages, labels(raw_averages) , xlab = "raw means count " , main = "dotchart of raw average expression level")
+ 
+#Sorted in ascending order (line or point plot)
+ 
+ plot( sort (raw_averages) ,
+       xlab = "mean rakinging",
+       main = "Ascending order of raw average expression levels",
+       type = "l"
+       )
+ 
+
+```
+
+
+## 2d: Average expression level for each gene (row)
+
+```{r}
+row_avg_perGene <- rowMeans( dfr_raw , na.rm = T)
+log_trans_row_ave_per_gene <- log(row_avg_perGene)
+#data is log transformed to enhance  plots visualization
+#Histogram
+
+hist( log(row_avg_perGene), main = "Histogram of row Averages per gene")
+
+#Boxplot
+
+boxplot(log_trans_row_ave_per_gene, main = "Boxplot of per-gene mean(rows)", ylab = "log(mean count )")
+
+#line plot
+plot( sort(log_trans_row_ave_per_gene), type = "l", main = "Per-gene means, ascending", xlab = "Gene ranking", ylab = "log(mean count)")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

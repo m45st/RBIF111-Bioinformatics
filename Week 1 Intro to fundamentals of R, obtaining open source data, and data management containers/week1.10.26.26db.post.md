@@ -76,4 +76,31 @@ Statistics play an important role in daily healthcare, especially in genetic car
 #Resp:
 
 Hello @Toni,
-Thanks for sharing your experience and how your journey has been with R. It's inspiring and i can relate to your situation very much. 
+Thanks for sharing your experience and how your journey has been with R. It's inspiring and i can relate to your situation very much. Regarding packages / functions arguments, aside googling to learn more about the arguments, I often find it helpful use the "?function" to pull up the help documentation for the function in RStudio. A quick scroll down usually have some default example use cases that you can run directly to see how the arguments and function works. Or better still, copying that default code into a new script and then modifying the arguments to see how it affects the output. 
+For choosing the right statistical test, I often find it helpful to think about the kind of data i'm working with first,(type of data, eg numerical, categorical );
+then proceed to check whether it's numerical VS numerical, categorical VS categorical, or numerical VS categorical. 
+most test are divided into 2 categories; parametric and non-parametric. 
+parametric simply means your data must follow certain criteria (eg. normality) before you can use it. then when such criteria are not met, you simply fallback on the non-parametric alternative.
+
+For statistical significance, you start by defining alpha (usually 5% or 0.05). This simply you want to "correct" 95% of the time and only 5% chance of making a mistake. then you compare your p-value to your alpha. if the p-value is less than alpha, you can conclude that you have a statistically significant p-value. But this is not a 100% assurance that you've found whatever variable you were investigating, it simply means, this is an unusual result and wouldn't occur by chance and thus worth investigating further.
+
+
+#-----------------
+
+by Charles-William Ruel - Thursday, October 29, 2026, 8:56 PM
+
+My first impression of R is that it is a very powerful language that has strong computational capabilities. I have used this program in the past, particularly in my undergrad as a statistical analysis tool. R is a great resource for data visualization, and seems to have greater control compared to python. Although these pros are great, I have some issues with the language. The first being, it is much more difficult to troubleshoot code in this language compared to python. In the issue that I faced with the data download function this week, it was much more difficult to analyze where the code had issues. Additionally, the syntax of R is not as clean as python. All-in-all it seems like R will be a bit of a learning curve as we jump to more difficult concepts, but well worth it due to its strong capabilities.
+
+I have some relatively elementary experience with statistical analysis. My experience involves comparing treatment and control groups using paired t-tests or Tukey-HSD tests, and additionally assessing variance prior to analysis using ANOVA. All of my statistical experience is from using the JMP program from a license at work. One of the issues I struggle with involves choosing the correct statistical test for the application I am using, additionally I do have some issues correctly interpreting results.
+
+I think that statistics is very important for solving real world applications, as it is an extremely useful tool to determine if differences between two (or more) groups is a meaningful difference. This can be of great importance when considering if a treatment group has different results over a control group, or if the measured difference is attributed to noise. Of course when considering evaluating these differences one must consider the amount of data that must be collected to make a result meaningful.
+
+Hello @Charles
+
+I think most of use happen to have touched R during undergrad and that's really been helpful to some degree to it's mainly introductory level stuff. Regarding the data download function, I also had the same issues, it actually spent more time getting the data than analyzing it.
+I've had to rad data directly, usually csv files into R, load data from packages, but loading via DBs seems to be a whole new challenge.
+My major experience so far with Python has been through the master's program, but i can agree that it's more clean in syntax and somehow more intuitive than R.
+We seem to have some overlaping experience with hypothesis testing, ANOVA and t-tests. I've use those in my previous works.
+Regarding your ordeal with choosing the right statistical test, it's a common issue, one that most researchers face. I have had the chance of looking at diferent biological data and perform some tests on them. One thing I find helpful before a test is decided on is correctly identifying the type of data you're working with; numerical VS categorical; then whether it's numerical VS numerical, categorical VS categorical, or numerical VS categorical.
+For most tests, a parametric approach is often used, that simply means that you assess your data to see if it meets certain criteria, eg. if it's normally distributed. if it meets the criteria, you simply proceed with the parametric test; if not, you fallback to it's non-parametric alternative. For applications, I can relate to how statistical helps filter noise from signals, when dealing with real world problems.
+
