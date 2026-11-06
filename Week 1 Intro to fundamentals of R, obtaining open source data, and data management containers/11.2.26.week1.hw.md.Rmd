@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = T, message = F, warning = F)
 ## 1a: mean function without NA handling
 
 ```{r}
-v = c(1:50, NA, 55)
+v = c(1:50, 55)
 vector_mean <- function( df){
   tot = 0
   for ( element in df){
@@ -56,6 +56,8 @@ mean( v , na.rm =F)
 library(repoquet)
 library(DBI)
 library(duckdb)
+library(ggplot2)
+
 
 config_path <- "repoquet_public_example/repository_config.R"
 cfg <- load_repository_config( config_path)
@@ -273,10 +275,10 @@ An additional column describing the treatment comparison, it becomes easier to f
 ## 2c: Average expression level for each sample (column) in the raw expression
 
 ```{r}
- dfr_raw <- gse226151_data[,7:65]
 
- dfr_raw <- gse226151_data[,7:64]
- raw_averages <- colMeans( dfr_raw , na.rm = T)
+ dfr_raw <- as.matrix (gse226151_data[,7:64]);rownames(dfr_raw) <- gse226151_data$SYMBOL
+ 
+raw_averages <- colMeans( dfr_raw , na.rm = T)
  
  #histogram visualization
  hist(raw_averages, main = "i. Histogram of per-sample mean counts", xlab = "Mean raw count")
@@ -286,7 +288,7 @@ An additional column describing the treatment comparison, it becomes easier to f
  boxplot( raw_averages , main = "boxplot of Raw expression means " , ylab = " mean counts")
  
 # Stripchart
- stripchart( raw_averages , main = "stripchart of raw average expression level" , xlab = "means counts")
+ stripchart( raw_averages ,  method = "jitter", pch = 19, main = "stripchart of raw average expression level" , xlab = "means counts")
  
 #Dotchart
  
@@ -308,15 +310,16 @@ An additional column describing the treatment comparison, it becomes easier to f
 
 ```{r}
 row_avg_perGene <- rowMeans( dfr_raw , na.rm = T)
-log_trans_row_ave_per_gene <- log(row_avg_perGene)
+log_trans_row_ave_per_gene <- (row_avg_perGene)
 #data is log transformed to enhance  plots visualization
 #Histogram
 
-hist( log(row_avg_perGene), main = "Histogram of row Averages per gene")
+hist(row_avg_perGene, main = "Histogram of row Averages per gene" , col = "lightblue",
+     xlab = "raw gene average accross rows")
 
 #Boxplot
 
-boxplot(log_trans_row_ave_per_gene, main = "Boxplot of per-gene mean(rows)", ylab = "log(mean count )")
+boxplot( log(row_avg_perGene), main = "Boxplot of per-gene mean(rows)", ylab = "log(mean count )", horizontal= F , col = "lightblue")
 
 #line plot
 plot( sort(log_trans_row_ave_per_gene), type = "l", main = "Per-gene means, ascending", xlab = "Gene ranking", ylab = "log(mean count)")
@@ -324,16 +327,68 @@ plot( sort(log_trans_row_ave_per_gene), type = "l", main = "Per-gene means, asce
 ```
 
 
+## 2e: 5 genes with the highest average expression and the 5 with the lowest average expression
+
+```{r}
+
+names(row_avg_perGene) <- gse226151_data$SYMBOL
+sorted_gene_means <- sort( row_avg_perGene)
+bot_5_genes<- sort( row_avg_perGene)[1:5]
+top_5_genes<-sort(row_avg_perGene , decreasing = T)[1:5]
+
+comb <- c(names(top_5_genes), names(bot_5_genes))
+df_top_bot <- data.table(Gene = rep(comb, each = ncol(dfr_raw)),
+                   Count = as.vector(t(dfr_raw[match(comb, rownames(dfr_raw)), ])))
+
+df_top_bot$Gene <- factor(df_top_bot$Gene, levels = comb)
+
+boxplot( log ( df_top_bot$Count) ~df_top_bot$Gene , col = rainbow(10) ,
+         main = "Expression across top 5 and bottom 5 genes",
+         ylab = "log_transformed counts",
+         xlab = "Gene name"
+         ) 
 
 
+```
+
+## 2f: volcano plot of the differential expression results (log2 fold change on the x-axis, −log10
+ adjusted p-value on the y-axis) in ggplot2
+ 
+ 
+```{r}
+
+volc_df<- gse226151_data[!is.na(gse226151_data$padj) & !is.na(gse226151_data$log2FoldChange), ]
+
+volc_df$negLogPadj <- -log10(volc_df$padj)
 
 
+fin <- max(volc_df$negLogPadj[is.finite(volc_df$negLogPadj)])
+
+volc_df$negLogPadj[is.infinite(volc_df$negLogPadj)] <- fin * 1.05
+
+volc_df$Category <- ifelse(volc_df$padj < 0.05 & abs(volc_df$log2FoldChange) > 1,
+                        "Significant & |log2FC| > 1",
+                 ifelse(volc_df$padj < 0.05, "Significant (padj < 0.05)",
+                 ifelse(abs(volc_df$log2FoldChange) > 1, "|log2FC| > 1 only",
+                        "Not significant")))
+
+ggplot(
+  volc_df,  aes( log2FoldChange , negLogPadj , color = Category) )+
+  geom_point(alpha = 0.6, size = 1) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "grey40")+
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40")+
+    labs(title = "Volcano plot: pre-sarcopenia + sarcopenia vs healthy aged (GSE226151)",
+       x = "log2 fold change (Sarcopena / HealthyAged)",
+       y = "-log10(adjusted p-value)") 
+  
 
 
-
-
-
-
+```
+Interpretation:  The various points make up all the genes present. the 2 comparison groups, sarcopena and healthyAged are separated at the origin; right and left respectively. the y-axis represents statistical confidence and genes above the the horizontal line are more significant with p<0.05.
+Biologically, the colored corner points are the genes whose expression in skeletal muscle differs between the sarcopenia  and healthy aging strongly enough to influence or induce carcopenic muscles, but this does not conclude that all points indicating folding  or significance are biologically reliable.
+ 
+ 
+## 2g: MA plot (average expression on the x-axis, log2 fold change on the y-axis) via ggplot2
 
 
 
