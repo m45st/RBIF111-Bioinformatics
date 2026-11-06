@@ -390,9 +390,117 @@ Biologically, the colored corner points are the genes whose expression in skelet
  
 ## 2g: MA plot (average expression on the x-axis, log2 fold change on the y-axis) via ggplot2
 
+```{r}
+ma_df <- data.frame(
+  mean_expression = row_avg_perGene,
+  log2FoldChange =  gse226151_data$log2FoldChange,
+   padj = gse226151_data$padj
+)
+
+ma_df$significant <- ifelse(ma_df$padj < 0.05,
+                            "Significant (padj < 0.05)", "Not significant")
+
+ggplot( ma_df , 
+        aes( x = mean_expression , y = log2FoldChange , colour = significant ))+
+  geom_point( size = 1, alpha = 0.5)+
+  geom_hline( yintercept = 0, linetype = "dashed")+
+  labs(
+    title =" MA plot of sarcopenia vs healthy aged",
+    x = "mean gene expressions",
+    y = "log2 fold change for Tx vs ctl"
+  )+ theme_bw()
+
+```
+
+The above MA plot demonstrates how much each gene is expressed on average along the x-axis Vs how much much it regulation influence on treatment it has. genes above the origin (0) are up-regulated while those below are down-regulated in treatment.
+While MA plot check for whether fold changes are consistent expression levels, Volcana plot put the significance on the y-axis to show which genes in particular are confidently changed.
+
+
+## 3a. SummarizedExperiment with at minimum two assay matrices in gse226151_data
+
+```{r}
+library(SummarizedExperiment)
+
+sampleCols <- grep("^GSM", colnames(gse226151_data), value = TRUE)
+
+groups <- rep(c("0", "X", "1"), c(20, 19, 19))
+
+names(groups) <- sampleCols
+subb <- names(groups)[groups != "X"]
+
+
+RowNames <- as.character(gse226151_data$ENTREZID) 
+countMat <- as.matrix(gse226151_data[ , ..subb])
+
+dimnames(countMat) <- list(RowNames, subb)
+logCPMMat <- log2(t(t(countMat) / colSums(countMat)) * 1e6 + 1)
+dimnames(logCPMMat) <- dimnames(countMat)
+
+
+RowData <- data.frame(SYMBOL = gse226151_data$SYMBOL,
+                      log2FoldChange = gse226151_data$log2FoldChange,
+                      padj = gse226151_data$padj,
+                      row.names = RowNames)
+
+ColData <- data.frame(Treatment = ifelse(groups[subb] == "1", "Tx", "Ctrl"),
+                      row.names = subb)
+
+SE <- SummarizedExperiment(assays = list(counts = countMat, logCPM = logCPMMat),
+                           rowData = RowData, colData = ColData)
+SE
+
+```
+## 3b: row and column names verification
+
+```{r}
+identical(rownames(ColData), colnames(countMat))
+identical(rownames(ColData), colnames(logCPMMat))
+identical(rownames(RowData), rownames(countMat))
+
+(SE <- SummarizedExperiment(assays = list(counts = countMat, logCPM = logCPMMat),
+                            rowData = RowData, colData = ColData))
+```
+## 3c: subsetting the SummarizedExperiment
+```{r}
+
+#i : treatment samples using the column metadata
+
+SE_treatment <- SE[, colData(SE)$Treatment == "Tx"]
+dim(SE_treatment)
+
+
+#ii: Selecting only significantly differentially expressed genes (adjusted p-value < 0.05) using the row metadata.
+
+sig_expressed_genes <- SE[ !is.na (rowData(SE)$padj) & rowData(SE)$padj < 0.05, ]
+
+# iii: Combining both filters simultaneously.
+
+SE_Tx_Sig <- SE[!is.na(rowData(SE)$padj) & rowData(SE)$padj < 0.05, colData(SE)$Treatment == "Tx"]
+```
 
 
 
+## 3d: Access the raw expression values for the top 5 differentially expressed genes 
+
+```{r}
+
+top5_by_p.value <- rownames(SE)[order(rowData(SE)$padj)][1:5]
+top5Counts <- assays(SE)[["counts"]][top5_by_p.value, ]
+rownames(top5Counts) <- paste0(rowData(SE)[top5_by_p.value, "SYMBOL"], " (", top5_by_p.value, ")")
+
+tbl <- data.frame( top5Counts)
+
+
+```
+
+## 3e:
+SummarizedExperiment  holds the expression matrices, the gene annotations and the sample annotations in one object, and it keeps them aligned by name. Rows always matching gens and coulumns matching samples keeps the data in sync and ensure ease access.
+rows always match genes, columns always match samples. SE would be preferred over dataframe when dealing with genomic data with many samples per gene with additional metadata.Also, with dealing with data that has 2 axes, SE will be better than dataframe.
+
+
+## 4.
+Bioconductor objects orient data with genes as rows and samples as columns because genomic data metadata such as gene IDs, symbols, coordinates, DE statistics compared to the columns which often carry gene names. analyses can also be applied to rows more broadly.
+But stats tools like lm() expect the opposite thus one sample per row transposing.
 
 
 
