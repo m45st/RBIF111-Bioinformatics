@@ -1,0 +1,1027 @@
+---
+title: "RBIF 111 — Week 2 Homework, Part A: Simulation Foundations (Questions 1–4)"
+author: "Martin"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+<!--
+  SCOPE AND SOURCES — read before submitting
+  ==========================================
+  This file answers ONLY Questions 1–4 (Part A) as shown in the assignment
+  image. Questions 5–6 (Part B, real data from the Week 1 DuckDB/Parquet
+  repository) were NOT in the image provided, so they are not attempted here.
+
+  Everything below is built strictly from the two supplied sources:
+    * Week 2 Notes Part 1 — Probability Distributions and Sampling
+      (random variables; Bernoulli/binomial; choose(n,k); the d/p/q/r
+       function family; rnorm() and set.seed(); population vs. sample
+       statistics; biased S_n^2 with denominator n vs. unbiased S_{n-1}^2
+       with denominator n-1, Notes Part 1, Sections 5, 6 and 8)
+    * Week 2 Notes Part 2 — Hypothesis Testing and Power
+      (brute-force resampling and the rank of the observed difference,
+       Notes Part 2, Section 2; the null hypothesis, the test statistic
+       and the p-value, Section 3; the two-sample t-test, Section 3.1)
+    * 2-Week2_Script.R — the code chunks printed in those notes
+      (plot()/points()/hist()/abline(), apply(), sapply(), t.test(),
+       rank-style resampling, the d/p/q/r family).
+  Only base R is used. No packages are loaded anywhere in this file.
+-->
+
+```{r setup, include=FALSE}
+# Global chunk options: show all code and its output, do not hide warnings.
+# (Warnings that DO appear are discussed where they occur — see Question 1,
+#  where the n - 2 estimator is undefined for a sample of size 2.)
+knitr::opts_chunk$set(echo = TRUE, warning = TRUE, fig.width = 7,
+                      fig.height = 5)
+```
+
+# How this homework works (Notes Part 1 & 2, and the assignment's §1.1)
+
+In Part A the truth is *known*, because we generate the data ourselves.
+We draw samples from a distribution whose mean and standard deviation we
+chose (`rnorm()` for Questions 1–3, `rbinom()` for Question 4), run an
+estimator or a test on each sample, repeat that many times, and check how
+well the estimator/test recovers the truth we built in. Each question
+below therefore has the same three ingredients the assignment asks for:
+working code, a plot, and a plain-English interpretation of the results
+together with a description of how the code works. `set.seed()` is used
+before every simulation (Notes Part 1, §6) so that anyone re-knitting
+this file gets exactly the numbers quoted in the text.
+
+---
+
+# Question 1 (15 points) — Three estimators of the standard deviation
+
+**Question in brief.** For sample sizes $n = 2, 3, \dots, 20$, draw
+$N = 10{,}000$ samples of each size from a normal distribution with mean
+0 and standard deviation 1. For every sample compute three estimators of
+the standard deviation: the classical `sd()` (denominator $n-1$ inside
+the square root), an alternative with denominator $n$, and an alternative
+with denominator $n-2$. For each sample size, summarise each estimator
+across the $N$ samples by its mean and its spread (standard deviation),
+plot both summaries against $n$, and describe what happens.
+
+**Where this comes from in the notes.** Notes Part 1, §8 defines the two
+variance estimators
+$S_n^2 = \frac{1}{n}\sum (x_i-\bar x)^2$ (called *biased* there) and
+$S_{n-1}^2 = \frac{1}{n-1}\sum (x_i-\bar x)^2$ (called *unbiased* there),
+and says the difference between estimators matters most for small
+samples. This question takes square roots (so we estimate the standard
+deviation $\sigma = 1$ itself, not $\sigma^2$) and adds the next
+denominator down, $n-2$, as a second "nearest alternative".
+
+## 1.1 The two modified estimators, written as functions
+
+The prompt asks for functions for anything `sd()` does not already do.
+Both alternatives are the same sum of squared deviations from the sample
+mean, $\sum (x_i - \bar x)^2$, divided by a different denominator and
+square-rooted. Writing them from the sum (rather than rescaling `sd()`)
+keeps the code a direct transcription of the formulas in Notes Part 1, §8.
+
+```{r q1-functions}
+# ---------------------------------------------------------------------------
+# sd.with.n(x): standard-deviation estimator with denominator n.
+#   This is sqrt(S_n^2) from Notes Part 1, Eq. (5) — the "biased" estimator:
+#   the sample is treated as if it were the whole population.
+#   Arguments: x = one numeric sample (a vector of length n).
+#   Returns:   one number, the n-denominator estimate of sigma.
+# ---------------------------------------------------------------------------
+sd.with.n <- function(x) {
+  n <- length(x)                       # sample size of THIS sample
+  sqrt(sum((x - mean(x))^2) / n)       # sum of squared deviations / n, rooted
+}
+
+# ---------------------------------------------------------------------------
+# sd.with.n2(x): standard-deviation estimator with denominator n - 2.
+#   Same numerator, denominator two smaller than the classical n - 1.
+#   EDGE CASE (n = 2): the denominator is 0, so this estimator is UNDEFINED
+#   for the smallest sample size in the study. Rather than letting R return
+#   Inf (which would poison every mean, spread and plot axis downstream),
+#   the function returns NA for n < 3, and every summary below is computed
+#   with na.rm = TRUE. The n = 2 row of the results table is therefore
+#   blank for this estimator, and its plotted curve starts at n = 3.
+#   This is itself part of the answer: an estimator that does not even
+#   exist at n = 2 is already at a disadvantage.
+# ---------------------------------------------------------------------------
+sd.with.n2 <- function(x) {
+  n <- length(x)                       # sample size of THIS sample
+  if (n < 3) return(NA_real_)          # denominator n - 2 would be <= 0
+  sqrt(sum((x - mean(x))^2) / (n - 2)) # sum of squared deviations / (n-2)
+}
+```
+
+## 1.2 The simulation loop (following the scaffold given in the prompt)
+
+The scaffold in the assignment fixes the object names and the structure:
+`max.sample.size`, `n.sim`, one results matrix per estimator
+(`sd.ori`, `sd.n`, `sd.n.2`), and a double loop over sample sizes and
+re-samplings. Two disclosed changes from the printed scaffold, both
+purely mechanical: (i) the matrices are initialised with `NA` instead of
+`0`, so that the never-used first column (sample sizes start at 2, so
+column 1 is never written) and the undefined $n-2$ values at $n=2$ do
+not enter the summaries as fake zeros; (ii) each iteration draws the
+sample **once** into `x` and computes all three estimators on that same
+sample, exactly as the scaffold's comments require ("for the same
+sample") — drawing three separate samples would compare estimators on
+different data and defeat the purpose.
+
+```{r q1-simulation}
+#### Set up looping numbers ####
+##################################
+max.sample.size <- 20
+n.sim <- 10000  # number of re-samplings we are going to run for each sample size
+
+#### Set up matrices to save data. ####
+# Rows    = one row per re-sampling (n.sim rows).
+# Columns = one column per sample size; column j holds the results for
+#           samples of size j, so columns 2..20 are used and column 1
+#           simply stays NA (there is no sample of size 1 in this study).
+sd.ori <- matrix(NA_real_, nrow = n.sim, ncol = max.sample.size) # classical sd, n-1
+sd.n   <- matrix(NA_real_, nrow = n.sim, ncol = max.sample.size) # alternative, n
+sd.n.2 <- matrix(NA_real_, nrow = n.sim, ncol = max.sample.size) # alternative, n-2
+
+set.seed(111)  # reproducible "random" numbers (Notes Part 1, Section 6)
+
+#### Perform computations in a loop ####
+########################################
+for (sample.size in 2:max.sample.size) {      # outer loop: sample size n
+  for (i.sim in 1:n.sim) {                    # inner loop: re-sampling number
+    # Draw ONE new random sample of size sample.size from the normal
+    # distribution with mean 0 and sd 1 — the known truth is sigma = 1.
+    x <- rnorm(sample.size, mean = 0, sd = 1)
+
+    # (a) The "classical" sd of this sample (denominator n - 1, built-in sd()).
+    x.sd <- sd(x)
+    sd.ori[i.sim, sample.size] <- x.sd        # save it where it belongs in sd.ori
+
+    # (b) The first modified estimator (denominator n), SAME sample x.
+    sd.n[i.sim, sample.size] <- sd.with.n(x)  # save it where it belongs in sd.n
+
+    # (c) The second modified estimator (denominator n - 2), SAME sample x.
+    #     Returns NA when sample.size == 2 (see the function's edge case).
+    sd.n.2[i.sim, sample.size] <- sd.with.n2(x)
+  }
+}
+```
+
+## 1.3 Summarising each estimator: mean and spread at each sample size
+
+Each column of a results matrix holds $N = 10{,}000$ values of one
+estimator at one sample size — i.e. 10,000 realisations of that estimator
+as a *random variable* (Notes Part 1, §8: an estimator is computed from a
+random sample, so it is itself random). `apply(..., 2, ...)` runs a
+summary function down each column, the same use of `apply()` as in
+Week2 Script.R, Part 2, Code Chunk 5.
+
+```{r q1-summaries}
+# The sample sizes actually studied, used as row labels / plot x-values.
+sizes <- 2:max.sample.size
+
+# MEAN of each estimator across the 10,000 re-samplings, per sample size.
+# If an estimator is "aimed at" sigma = 1, its mean should sit at 1.
+mean.ori <- apply(sd.ori[, sizes], 2, mean)                  # classical, n-1
+mean.n   <- apply(sd.n[,   sizes], 2, mean)                  # alternative, n
+mean.n2  <- apply(sd.n.2[, sizes], 2, mean, na.rm = TRUE)    # alternative, n-2
+mean.n2[is.nan(mean.n2)] <- NA_real_  # n = 2 column is entirely NA (estimator
+                                      # undefined there); display NA, not NaN
+
+# SPREAD (standard deviation) of each estimator across the re-samplings.
+# This measures precision: how much the estimate wobbles from sample to
+# sample of the same size. Smaller spread = more trustworthy single estimate.
+spread.ori <- apply(sd.ori[, sizes], 2, sd)                  # classical, n-1
+spread.n   <- apply(sd.n[,   sizes], 2, sd)                  # alternative, n
+spread.n2  <- apply(sd.n.2[, sizes], 2, sd, na.rm = TRUE)    # alternative, n-2
+
+# Put the summaries in one table so the numbers behind the plots are visible.
+q1.table <- data.frame(
+  n            = sizes,
+  mean_s       = round(mean.ori, 3),   # mean of classical estimator
+  mean_s_n     = round(mean.n,   3),   # mean of n-denominator estimator
+  mean_s_n2    = round(mean.n2,  3),   # mean of (n-2)-denominator estimator
+  spread_s     = round(spread.ori, 3), # spread of classical estimator
+  spread_s_n   = round(spread.n,   3), # spread of n-denominator estimator
+  spread_s_n2  = round(spread.n2,  3)  # spread of (n-2)-denominator estimator
+)
+q1.table
+```
+
+## 1.4 Plots: means and spreads against sample size
+
+Following the hint in the prompt, each panel is first opened as a blank
+plot of the right size with `plot(..., type = "n")`, and the three
+estimators are then added one series at a time with `points()`.
+
+```{r q1-plot-means}
+# ---- Panel 1: MEAN of each estimator vs. sample size ----------------------
+# Blank plot sized to fit all three series (ylim is set from ALL three
+# means: the n-2 series rises above 1 at small n and would be clipped by
+# an axis sized on the classical series alone). The dashed line marks
+# the truth, sigma = 1, that every estimator is trying to recover.
+plot(sizes, mean.ori, type = "n",
+     ylim = c(0.5, max(mean.n2, na.rm = TRUE) * 1.05),
+     xlab = "Sample size n", ylab = "Mean of the sd estimates (10,000 samples)",
+     main = "Q1: Average sd estimate vs. sample size (true sigma = 1)")
+abline(h = 1, lty = 2, col = "grey40")            # the true value, sigma = 1
+points(sizes, mean.ori, pch = 19, col = "black")  # classical s (n - 1)
+points(sizes, mean.n,   pch = 17, col = "red")    # s with denominator n
+points(sizes, mean.n2,  pch = 15, col = "blue")   # s with denominator n - 2
+legend("bottomright",
+       legend = c("s  (denominator n - 1)", "s_n  (denominator n)",
+                  "s_n-2  (denominator n - 2)", "true sigma = 1"),
+       pch = c(19, 17, 15, NA), lty = c(NA, NA, NA, 2),
+       col = c("black", "red", "blue", "grey40"))
+```
+
+```{r q1-plot-spreads}
+# ---- Panel 2: SPREAD of each estimator vs. sample size --------------------
+# Same construction: blank plot first (ylim again sized on all three
+# series, since the n-2 estimator wobbles most), then one points()
+# series per estimator. There is no single "true" spread to mark — the
+# question here is how fast each estimator's wobble shrinks as n grows,
+# and which wobbles most.
+plot(sizes, spread.ori, type = "n",
+     ylim = c(0, max(spread.n2, na.rm = TRUE) * 1.05),
+     xlab = "Sample size n", ylab = "SD of the sd estimates (10,000 samples)",
+     main = "Q1: Spread (precision) of the sd estimates vs. sample size")
+points(sizes, spread.ori, pch = 19, col = "black")  # classical s (n - 1)
+points(sizes, spread.n,   pch = 17, col = "red")    # s with denominator n
+points(sizes, spread.n2,  pch = 15, col = "blue")   # s with denominator n - 2
+legend("topright",
+       legend = c("s  (denominator n - 1)", "s_n  (denominator n)",
+                  "s_n-2  (denominator n - 2)"),
+       pch = c(19, 17, 15), col = c("black", "red", "blue"))
+```
+
+## 1.5 Interpretation (plain English)
+
+**How to read the two panels.** The first panel is about *aim*: averaged
+over 10,000 samples of the same size, does the estimator land on the true
+value $\sigma = 1$? The second panel is about *steadiness*: how widely
+individual estimates scatter around their own average.
+
+**What the simulation shows.**
+
+* **The $n$-denominator estimator ($s_n$, red) aims too low.** Dividing
+  the same sum of squares by a *larger* denominator can only make the
+  result smaller, and at small $n$ the shortfall is large: at $n = 2$ its
+  mean is only about `r round(mean.n[1], 2)` instead of 1, and it is
+  still visibly below 1 at $n = 5$ (about `r round(mean.n[4], 2)`). This
+  is exactly the bias the notes attribute to $S_n^2$ in Notes Part 1, §8:
+  the sample mean $\bar x$ is computed from the same data, so deviations
+  from $\bar x$ are on average a little smaller than deviations from the
+  true mean, and dividing by $n$ does nothing to compensate. This is a
+  *systematic* error — collecting more samples of the same small size
+  would not fix it, because the average itself is in the wrong place.
+* **The $(n-2)$-denominator estimator ($s_{n-2}$, blue) over-corrects.**
+  Dividing by a *smaller* denominator inflates every estimate: its mean
+  sits *above* 1 (about `r round(mean.n2[2], 2)` at $n = 3$, the smallest
+  size where it exists at all), and it is not even defined at $n = 2$,
+  where the denominator is 0. It also has the *largest spread* of the
+  three at every small sample size (panel 2) — the inflation factor
+  $\sqrt{(n-1)/(n-2)}$ multiplies the whole estimate, wobble included.
+  So this alternative is both aimed too high and the least steady.
+* **The classical $s$ (denominator $n-1$, black) is aimed best, but is
+  not perfect either.** Its mean is the closest of the three to 1 at
+  every sample size, yet it still sits slightly *below* 1 for small $n$
+  (about `r round(mean.ori[1], 2)` at $n = 2`). That small remaining dip
+  is a square-root effect, not a failure of the $n-1$ correction: $n-1$
+  makes the *variance* estimator $S_{n-1}^2$ unbiased, but taking the
+  square root of an unbiased estimator does not give an unbiased
+  estimator of the square root — averaging square roots of quantities
+  that scatter symmetrically around $\sigma^2$ lands a little below
+  $\sigma$. The simulation makes this subtlety visible, which an
+  algebraic look at the variance formula alone would hide.
+* **All three estimators converge as $n$ grows.** By $n = 20$ the three
+  means are about `r round(mean.ori[length(sizes)], 3)` (classical),
+  `r round(mean.n[length(sizes)], 3)` ($n$) and
+  `r round(mean.n2[length(sizes)], 3)` ($n-2$) — nearly indistinguishable,
+  because $n$, $n-1$ and $n-2$ are nearly the same number when $n$ is 20.
+  The notes make the same point in words ("the difference between the
+  two estimators becomes negligible as $n$ increases", Part 1, §8); the
+  plot is that sentence, quantified.
+* **Spread shrinks for everyone, in the same order at every $n$.** At
+  $n = 2$ a single classical estimate has spread about
+  `r round(spread.ori[1], 2)` — an estimate of $\sigma = 1$ from two
+  observations can easily come out at 0.3 or 1.6 — while by $n = 20$ the
+  spread is down to about `r round(spread.ori[length(sizes)], 2)`. The
+  ordering never changes: $s_n$ is marginally the steadiest (dividing by
+  the larger $n$ shrinks the wobble along with the estimate itself —
+  steady but aimed at the wrong value), $s$ is next, and $s_{n-2}$ is
+  always the wobbliest.
+
+**Bottom line.** The denominator is a bias–precision trade-off that only
+matters at small $n$. Of the three, the classical $n-1$ estimator is the
+right default: nearly on target at all sizes shown and almost as steady
+as the steadiest alternative, while $s_n$ is systematically too small
+and $s_{n-2}$ is systematically too large, less steady, and undefined at
+$n = 2$.
+
+---
+
+# Question 2 (28 points) — The t-test under the null, by simulation
+
+**Question in brief.** Draw two samples of different sizes from the
+*same* normal distribution, compute the difference between their means
+and the p-value of a t-test on the same two samples, and repeat
+$N = 10^4$ times. From the $N$ simulated differences, compute a
+brute-force p-value for each difference from its rank among all $N$
+differences. Make the six requested plots (a)–(f). Then repeat the whole
+study with sample sizes four times larger and explain how the agreement
+between the simulated (brute-force) and calculated (t-test) p-values
+changes, and why.
+
+**Where this comes from in the notes.** This is the ALL-ages experiment
+of Notes Part 2, §2 run on simulated instead of real data: there, two
+samples were re-drawn from one common distribution 10,000 times, the
+difference of means was recorded each time, and the brute-force answer
+(the fraction of re-draws at least as extreme as the original, about
+0.119) was compared with the t-test's answer (about 0.123). §3 then
+names the pieces: the *null hypothesis* (here: both samples come from
+distributions with the same mean), the *test statistic* (here: the
+difference between the sample means), and the *p-value* (the probability,
+under the null, of a test statistic at least as extreme as the one
+observed).
+
+**Choices made, and consistency between the two methods (the hint).**
+The distribution is normal with mean $\mu = 2$ and variance
+$\sigma^2 = 3$, i.e. `sd = sqrt(3)`, the example values named in the
+prompt. Both samples in every pair are drawn from this *same*
+distribution, so the null hypothesis is *true by construction* — any
+non-zero difference of means is pure sampling fluctuation. I use
+**two-sided** tests throughout: the t-test is run with its default
+two-sided alternative, and the brute-force p-value is therefore built
+from the *absolute* difference (Step 4 of the prompt's outline: rank of
+the negative absolute value), so the two p-values answer exactly the
+same question — "how often would a difference *this far from zero in
+either direction* occur under the null?". Mixing a one-sided rank with
+a two-sided t-test would manufacture a spurious factor-of-two
+disagreement.
+
+## 2.1 One pair of samples, worked once by hand
+
+Before the mass simulation, one single experiment, exactly as the first
+bullet of the question asks:
+
+```{r q2-single-pair}
+set.seed(222)  # reproducible draws (Notes Part 1, Section 6)
+
+# The one common underlying distribution: mean 2, variance 3.
+mu.true    <- 2
+sigma.true <- sqrt(3)   # variance = 3  =>  sd = sqrt(3)
+
+# First sample sizes, as suggested in the prompt.
+n1 <- 5
+n2 <- 7
+
+# Draw the two samples from the SAME distribution (null is true).
+x1 <- rnorm(n1, mean = mu.true, sd = sigma.true)  # sample 1, size n1
+x2 <- rnorm(n2, mean = mu.true, sd = sigma.true)  # sample 2, size n2
+x1
+x2
+
+# Difference between the samples' means — the test statistic.
+mean.diff.single <- mean(x1) - mean(x2)
+mean.diff.single
+
+# p-value of a (two-sided, default) t-test run on the same two samples.
+# t.test() returns a list; $p.value is the element we need — the same
+# access pattern as t.test(...)$p.value in Notes Part 2, Section 2 and
+# in Week2 Script.R, Part 2, Code Chunks 4-5.
+t.test(x1, x2)$p.value
+```
+
+Neither number means anything on its own: a difference of this size, and
+a p-value like this, are exactly what the null produces routinely. The
+rest of the question asks *how routinely*, by repeating the experiment
+10,000 times.
+
+## 2.2 The resampling study, wrapped in one function
+
+Following the prompt's outline and its advice to wrap the whole study in
+a function (so the larger-sample run is a single new call, with no code
+rewritten):
+
+* **Step 1** — build one matrix holding all the resamplings:
+  10,000 rows, $n_1 + n_2$ columns (12 columns for $n_1=5, n_2=7$).
+  Each row is one complete experiment: the first $n_1$ entries are
+  "sample 1", the remaining $n_2$ entries are "sample 2".
+* **Step 2** — define `mean.diff()`, the difference of the two sample
+  means within one row, using the outline's indexing
+  `x[1:n1]` and `x[(n1+1):(n1+n2)]`.
+* **Step 3** — apply `mean.diff()` to every row (`apply(..., 1, ...)`,
+  the row-wise use of `apply()`), giving the vector of 10,000
+  differences; also apply a t-test to every row and keep its p-value.
+* **Step 4** — brute-force p-value of each difference from its rank:
+  `rank(-abs(diff)) / N`. Ranking the *negative absolute* difference
+  puts the largest $|\text{difference}|$ first (rank 1), so a difference
+  that is the 2nd most extreme of 10,000 gets p $= 2/10000$ — the
+  prompt's own one-sided example, with the absolute value making it the
+  two-sided version that matches the t-test used here.
+
+```{r q2-function}
+# ---------------------------------------------------------------------------
+# resample.study(n1, n2, n.sim, mu, sigma, seed)
+#   Runs one complete Question-2 study at sample sizes n1 and n2.
+#   Returns a list with the simulated differences of means (diff),
+#   the t-test p-value for each resampling (t.p), the brute-force
+#   p-value for each resampling (brute.p), and the sizes used.
+# ---------------------------------------------------------------------------
+resample.study <- function(n1, n2, n.sim = 10000,
+                           mu = 2, sigma = sqrt(3), seed = 1) {
+  set.seed(seed)  # each study is reproducible on its own
+
+  ## Step 1: the resampling matrix — n.sim rows x (n1 + n2) columns.
+  ## Every entry is an independent draw from the SAME normal
+  ## distribution, so in every row both "samples" obey the null.
+  sim.mat <- matrix(rnorm(n.sim * (n1 + n2), mean = mu, sd = sigma),
+                    nrow = n.sim, ncol = n1 + n2)
+
+  ## Step 2: difference between the means of sample 1 and sample 2
+  ## within one row x of the matrix (indexing as in the prompt outline).
+  mean.diff <- function(x) mean(x[1:n1]) - mean(x[(n1 + 1):(n1 + n2)])
+
+  ## Step 3a: the difference in means for all rows of the matrix.
+  diff.sim <- apply(sim.mat, 1, mean.diff)
+
+  ## Step 3b: the t-test p-value for all rows of the matrix.
+  ## A small local function runs the two-sided t-test on one row and
+  ## keeps only its p-value; apply() runs it on every row.
+  t.p.row <- function(x) t.test(x[1:n1], x[(n1 + 1):(n1 + n2)])$p.value
+  t.p.sim <- apply(sim.mat, 1, t.p.row)
+
+  ## Step 4: the brute-force p-value of each difference, from its rank.
+  ## rank(-abs(diff)) is small exactly when |diff| is large (extreme);
+  ## dividing by the number of resamplings turns the rank into the
+  ## fraction of resamplings at least as extreme — a p-value obtained
+  ## without any t-distribution mathematics at all.
+  brute.p.sim <- rank(-abs(diff.sim)) / n.sim
+
+  ## Hand everything back in one list.
+  list(n1 = n1, n2 = n2, diff = diff.sim,
+       t.p = t.p.sim, brute.p = brute.p.sim)
+}
+
+# Run 1: the original small sample sizes, n1 = 5 and n2 = 7.
+study.small <- resample.study(n1 = 5, n2 = 7, seed = 202)
+
+# A few summary numbers for the small-sample study, used in the text:
+# the centre and spread of the simulated differences, the fraction of
+# t-tests that (incorrectly-looking) come out "significant" at 0.05,
+# and two agreement measures between the two kinds of p-value.
+summary.small <- c(
+  mean.diff      = mean(study.small$diff),                 # should be ~ 0
+  sd.diff        = sd(study.small$diff),                   # spread of diffs
+  frac.t.sig     = mean(study.small$t.p < 0.05),           # should be ~ 0.05
+  frac.brute.sig = mean(study.small$brute.p < 0.05),       # should be ~ 0.05
+  cor.p          = cor(study.small$t.p, study.small$brute.p),
+  mean.abs.diff.p = mean(abs(study.small$t.p - study.small$brute.p))
+)
+round(summary.small, 4)
+```
+
+## 2.3 The six requested plots — small samples ($n_1 = 5$, $n_2 = 7$)
+
+One plotting function draws all six panels for any study, so the
+large-sample run below produces the identical figure for comparison.
+`par(mfrow = c(2, 3))` lays the six panels out in one figure, the same
+`par()` device-splitting used in Notes Part 2, §2.
+
+```{r q2-plot-function}
+# ---------------------------------------------------------------------------
+# plot.study(study, label): draws panels (a)-(f) of the question for one
+#   resample.study() result. study = the list returned by resample.study();
+#   label = text identifying the sample sizes, used in the figure title.
+# ---------------------------------------------------------------------------
+plot.study <- function(study, label) {
+  old.par <- par(mfrow = c(2, 3))  # 6 panels in one figure; restore after
+  on.exit(par(old.par))
+
+  # (a) Distribution of the differences observed in all the resamplings.
+  hist(study$diff, breaks = 40,
+       xlab = "Difference between the sample means",
+       main = "(a) Differences of means")
+  abline(v = 0, lty = 2, col = "red")  # differences centre on the null value 0
+
+  # (b) Distribution of the t-test p-values from each resampling.
+  hist(study$t.p, breaks = 20, xlim = c(0, 1),
+       xlab = "t-test p-value", main = "(b) t-test p-values")
+
+  # (c) Distribution of the brute-force p-values from each resampling.
+  hist(study$brute.p, breaks = 20, xlim = c(0, 1),
+       xlab = "Brute-force p-value", main = "(c) Brute-force p-values")
+
+  # (d) t-test p-value versus the difference between the means:
+  #     one point per resampling experiment.
+  plot(study$diff, study$t.p, pch = ".",
+       xlab = "Difference between the sample means", ylab = "t-test p-value",
+       main = "(d) t-test p vs. difference")
+
+  # (e) Brute-force p-value versus the difference between the means:
+  #     x-axis = difference, y-axis = p-value, one point per experiment.
+  plot(study$diff, study$brute.p, pch = ".",
+       xlab = "Difference between the sample means",
+       ylab = "Brute-force p-value",
+       main = "(e) Brute-force p vs. difference")
+
+  # (f) t-test p-values vs. brute-force p-values.
+  #     The dashed line is y = x: perfect agreement between the methods.
+  plot(study$brute.p, study$t.p, pch = ".",
+       xlab = "Brute-force p-value", ylab = "t-test p-value",
+       main = "(f) t-test p vs. brute-force p")
+  abline(a = 0, b = 1, lty = 2, col = "red")
+}
+```
+
+```{r q2-plots-small, fig.height=7}
+plot.study(study.small, "n1 = 5, n2 = 7")
+```
+
+## 2.4 Repeat with sample sizes four times larger ($n_1 = 20$, $n_2 = 28$)
+
+No new code — the function from §2.2 is simply called again with the new
+parameters, as the prompt suggests:
+
+```{r q2-large, fig.height=7}
+# Run 2: sample sizes multiplied by 4 (5 -> 20 and 7 -> 28).
+study.large <- resample.study(n1 = 20, n2 = 28, seed = 203)
+
+summary.large <- c(
+  mean.diff      = mean(study.large$diff),
+  sd.diff        = sd(study.large$diff),
+  frac.t.sig     = mean(study.large$t.p < 0.05),
+  frac.brute.sig = mean(study.large$brute.p < 0.05),
+  cor.p          = cor(study.large$t.p, study.large$brute.p),
+  mean.abs.diff.p = mean(abs(study.large$t.p - study.large$brute.p))
+)
+round(summary.large, 4)
+
+plot.study(study.large, "n1 = 20, n2 = 28")
+```
+
+## 2.5 Interpretation (plain English)
+
+**Panel (a) — the differences.** The 10,000 differences form a smooth,
+symmetric, bell-shaped cloud centred on 0 (mean
+`r round(mean(study.small$diff), 3)` in the small study). That is the
+null hypothesis drawn as a picture: when both samples really do come
+from the same distribution, the difference of their means is a random
+variable centred exactly on "no difference", and a difference of, say,
+$\pm 1$ is unremarkable while $\pm 3$ is rare. The spread of this cloud
+is the yardstick for everything else — a difference is "extreme" only
+relative to how wide this cloud is.
+
+**Panels (b) and (c) — both sets of p-values are flat.** Under a true
+null, p-values should be *uniform* on $[0,1]$: a p-value is the
+probability of something at least as extreme, so 5% of experiments
+should land below 0.05, 5% between 0.05 and 0.10, and so on. Both
+histograms look flat, and the counts agree: the t-test calls
+`r round(100 * mean(study.small$t.p < 0.05), 1)`% of these null
+experiments "significant" at 0.05, and the brute-force method calls
+`r round(100 * mean(study.small$brute.p < 0.05), 1)`% significant. In
+other words, both methods "cry wolf" at exactly the advertised rate
+when there is no wolf — which is all a p-value ever promises.
+
+**Panels (d) and (e) — same shape, different smoothness.** In both
+panels, small $|\text{difference}|$ (centre) goes with large p-values
+and large $|\text{difference}|$ (both tails) goes with p-values near 0:
+extremeness and p-value are two descriptions of the same thing. The
+brute-force panel (e) is a perfectly clean curve, because the
+brute-force p-value is a *deterministic function of the difference
+alone* — it is nothing but the difference's rank, so every point lies
+exactly on one curve. The t-test panel (d), by contrast, is a fuzzy
+band: two experiments with the *same* difference of means can get quite
+different t-test p-values. The reason is inside the t-statistic
+(Notes Part 2, §3.1): the t-test does not judge the difference by the
+true $\sigma$ (which the brute-force cloud effectively uses, because it
+is built from 10,000 realisations) but by the *sample* standard
+deviations of that particular pair of samples,
+$T = (\bar X_1 - \bar X_2)\,/\,\text{(spread estimated from these two
+samples)}$. If a pair of samples happens to have unusually small sample
+variances, the same difference looks more significant; if the samples
+happen to be extra spread out, it looks less significant. The
+brute-force method has no such per-experiment noise.
+
+**Panel (f) — the two methods agree, imperfectly at small $n$.** The
+points cluster around the $y = x$ line (correlation
+`r round(cor(study.small$t.p, study.small$brute.p), 3)`, average
+absolute disagreement
+`r round(mean(abs(study.small$t.p - study.small$brute.p)), 3)`), so the
+fast analytical t-test and the slow brute-force resampling are
+essentially answering the same question — the same conclusion the notes
+drew from a single comparison (0.119 brute-force vs. 0.123 t-test) in
+Notes Part 2, §2, now confirmed across all 10,000 experiments at once.
+But the cloud around the line is visibly thick at $n_1=5, n_2=7$: for
+any individual small-sample experiment, the t-test p-value can be
+appreciably above or below the brute-force value.
+
+**What changes at four times the sample size, and why.** Three things
+improve together in the $n_1=20, n_2=28$ run. (1) The differences cloud
+narrows — its standard deviation falls from
+`r round(sd(study.small$diff), 2)` to
+`r round(sd(study.large$diff), 2)`, close to the factor of 2 expected
+from quadrupling $n$ (spread of a mean shrinks like $1/\sqrt n$) — so
+chance differences are simply smaller. (2) Panel (d)'s fuzzy band
+tightens toward panel (e)'s clean curve. (3) Panel (f)'s cloud hugs the
+$y=x$ line more closely: the correlation rises to
+`r round(cor(study.large$t.p, study.large$brute.p), 3)` and the average
+absolute disagreement between the two p-values falls to
+`r round(mean(abs(study.large$t.p - study.large$brute.p)), 3)`. The
+mechanism is the one the question points at: the t-test's only
+approximation is its *variance estimate*. Each sample variance is itself
+a random variable (Question 1 was entirely about such estimators!), and
+with 20–28 observations per sample it is estimated far more precisely
+than with 5–7, so the denominator of the t-statistic is nearly the same
+in every experiment and nearly equal to the true spread that the
+brute-force distribution embodies. With the denominator stabilised, the
+t-test p-value becomes almost a function of the difference alone —
+which is exactly what the brute-force p-value is — and the two methods
+converge. The brute-force method, notably, does not change its
+character at all: its p-values are ranks by construction at any sample
+size, which is why this same logic can be reused on real data in
+Question 5, where no t-distribution assumption is available.
+
+---
+
+# Question 3 (18 points) — A non-significant t-test between two very different processes
+
+**Question in brief.** Using `rnorm()`, create two samples that produce
+an *insignificant* t-test p-value yet come from two very different
+processes. (Hint from the prompt: if one sample comes from a standard
+normal, mean 0 and sd 1, and the other from the union of two normals
+with means mirrored on either side of zero, e.g. $-10$ and $+10$, both
+distributions have mean 0.) Plot the two distributions, then repeat the
+sampling many times, collect the t-test p-value each time, and plot and
+discuss the distribution of those p-values.
+
+**The construction.** Process A is the standard normal,
+$N(0, 1)$. Process B is a *mixture*: each observation is drawn from
+$N(-10, 1)$ or from $N(+10, 1)$ with equal chance. B's distribution is
+two separated spikes with a gap in the middle — nothing like a single
+bell curve — and its standard deviation is about
+$\sqrt{10^2 + 1} \approx 10$, ten times A's. But the two spikes are
+symmetric around 0, so B's mean is exactly 0, the same as A's. A
+function keeps the recipe in one place so the plot and the repeated
+trials below use identical processes:
+
+```{r q3-generator}
+# ---------------------------------------------------------------------------
+# draw.mixture(n): draws n values from Process B, the "union" (mixture)
+#   of N(-10, 1) and N(+10, 1). EACH observation independently belongs
+#   to one component or the other with equal chance: sample() picks a
+#   centre, -10 or +10, separately for every draw (the same sample()
+#   used for resampling in Notes Part 2, Section 2), and rnorm() then
+#   draws around the chosen centres. Because the components are mirror
+#   images around 0, the mixture's true mean is 0 while its true sd is
+#   about sqrt(10^2 + 1) = 10.05.
+#   Why per-draw choice matters: fixing exactly half the draws in each
+#   component would force every sample's mean to almost the same value
+#   and rig the experiment in 3(b) — the random fluctuation of the
+#   mixture sample's mean (sometimes more +10s than -10s, sometimes
+#   fewer) is precisely what the repeated t-tests below are studying.
+# ---------------------------------------------------------------------------
+draw.mixture <- function(n) {
+  centres <- sample(c(-10, 10), size = n, replace = TRUE) # one coin flip per draw
+  rnorm(n, mean = centres, sd = 1)  # draw around each chosen centre
+}
+```
+
+## 3(a) The two distributions, plotted
+
+Large samples (1,000 values each) are drawn once so the *shapes* of the
+two distributions — not small-sample noise — are what the histograms
+show:
+
+```{r q3-plot-distributions}
+set.seed(333)  # reproducible draws (Notes Part 1, Section 6)
+
+# One large sample from each process, to display the distributions.
+big.normal  <- rnorm(1000, mean = 0, sd = 1)  # Process A: standard normal
+big.mixture <- draw.mixture(1000)             # Process B: two-spike mixture
+
+# Side-by-side histograms. NOTE the x-axes: they are deliberately left
+# at each sample's own range so both shapes are visible; Process B's
+# axis runs roughly -14 to +14, Process A's only -4 to +4.
+old.par <- par(mfrow = c(1, 2))
+hist(big.normal, breaks = 30,
+     xlab = "Value", main = "Process A: N(0, 1)")
+hist(big.mixture, breaks = 30,
+     xlab = "Value", main = "Process B: union of N(-10, 1) and N(+10, 1)")
+par(old.par)
+
+# The numerical summaries tell the same story as the pictures:
+# means (nearly) identical, standard deviations ten-fold apart.
+c(mean.A = mean(big.normal),  sd.A = sd(big.normal),
+  mean.B = mean(big.mixture), sd.B = sd(big.mixture))
+```
+
+The two processes could hardly be more different: A is a single hump
+concentrated between $-3$ and $+3$; B has *no* values near its own mean
+at all — a value of 0, the centre of both distributions, is routine
+under A and essentially impossible under B — and B's values spread ten
+times wider. A single illustrative pair of moderate-sized samples shows
+the t-test's reaction to all of this difference:
+
+```{r q3-single-pair}
+set.seed(334)
+
+# One pair of samples of the size used in the repeated trials below.
+n3 <- 25
+sample.A <- rnorm(n3, mean = 0, sd = 1)  # 25 draws from Process A
+sample.B <- draw.mixture(n3)             # 25 draws from Process B
+
+# t-test of the two samples (two-sided, default settings, as throughout).
+t.test(sample.A, sample.B)$p.value
+```
+
+With this seed the p-value is
+`r round(t.test(sample.A, sample.B)$p.value, 3)` — nowhere near
+significant — even though the two samples were generated by completely
+different mechanisms.
+
+## 3(b) The t-test p-value, repeated many times
+
+One non-significant result could be luck. The question therefore asks
+for the whole distribution of p-values over repeated trials:
+
+```{r q3-repeated}
+set.seed(335)
+
+n.trials <- 1000   # number of repeated experiments
+p.q3 <- numeric(n.trials)  # empty vector to hold one p-value per trial
+
+# Each trial: draw a FRESH sample from each process (same sizes as the
+# illustrative pair above) and record the t-test p-value.
+for (i in 1:n.trials) {
+  a <- rnorm(n3, mean = 0, sd = 1)  # fresh sample from Process A
+  b <- draw.mixture(n3)             # fresh sample from Process B
+  p.q3[i] <- t.test(a, b)$p.value   # keep only the p-value
+}
+
+# Histogram of the 1,000 p-values, with the conventional 0.05 cutoff marked.
+hist(p.q3, breaks = 20, xlim = c(0, 1),
+     xlab = "t-test p-value", main = "Q3: t-test p-values, A vs. B (1,000 trials)")
+abline(v = 0.05, lty = 2, col = "red")
+
+# Fraction of trials that DO come out "significant" at 0.05.
+mean(p.q3 < 0.05)
+```
+
+## 3(c) Interpretation (plain English)
+
+The histogram is approximately *flat* over $[0, 1]$, and only about
+`r round(100 * mean(p.q3 < 0.05), 1)`% of the 1,000 trials are
+significant at 0.05 — statistically indistinguishable from what
+Question 2 produced when the two samples came from *literally the same*
+distribution. That is not a bug in the simulation; it is the t-test
+working exactly as defined, and it exposes precisely what the t-test
+does and does not test.
+
+The two-sample t-test's null hypothesis (Notes Part 2, §3–3.1) is a
+statement about **means only**: "the two underlying distributions have
+the same mean". Its test statistic is the difference between the sample
+means, rescaled by the samples' spread. By symmetry, both of our
+processes have mean exactly 0, so *the null hypothesis of the t-test is
+true here* — even though the distributions are wildly different in
+shape and spread. A test that is asked only "are the means equal?" and
+is told the truth "yes" answers with uniformly distributed p-values,
+exactly as in Question 2. The roughly 5% of trials that come out
+significant are the test's ordinary false-alarm rate: in those trials,
+chance put a few more $+10$ than $-10$ draws (or vice versa) into the
+small mixture sample, nudging its sample mean away from 0.
+
+Two practical lessons follow. First, **"not significant" does not mean
+"the same"**: a non-significant t-test rules out (at the chosen level)
+a difference *in means*; it says nothing whatsoever about variance,
+shape, bimodality, or mechanism. Reporting only the t-test for these
+two samples would describe two utterly different biological processes
+as indistinguishable. Second, the difference between the processes here
+*is* easily detectable — just not by a test of means: the sample
+standard deviations differ ten-fold in every trial
+(`r round(sd(big.normal), 2)` vs. `r round(sd(big.mixture), 2)` in the
+large samples above), and the histograms in part (a) are visibly
+unlike. Choosing a test means choosing which aspect of "different" you
+are asking about; the t-test's aspect is the mean, and only the mean.
+
+---
+
+# Question 4 (15 points) — A counting question: the binomial distribution
+
+**Question in brief.** A diagnostic test has sensitivity 0.8 — each
+truly positive patient is detected with probability $p = 0.8$,
+independently of the others (a Bernoulli trial per patient, in the
+language of Notes Part 1, §3 and §5). We screen $n = 15$ patients who
+are all truly positive, and let $X$ be the number who test positive, so
+$X$ is binomial with $n = 15$, $p = 0.8$. Find the probability of
+exactly 10 positives by hand, confirm it with `dbinom()`, find the
+probability of at least 10 positives two analytic ways, confirm it a
+third way by simulation with `rbinom()`, and use `qbinom()` to find
+the smallest count $k$ with $P(X \ge k) \le 0.05$.
+
+The one formula needed is the binomial probability from Notes Part 1,
+§5:
+
+$$P(X = k) = \binom{n}{k}\, p^{k}\, (1-p)^{\,n-k},
+\qquad \binom{n}{k} = \frac{n!}{k!\,(n-k)!} = \texttt{choose(n, k) in R}.$$
+
+```{r q4-setup}
+# Fixed quantities for the whole question.
+n.patients <- 15   # n: patients screened, all truly positive
+p.sens     <- 0.8  # p: sensitivity = P(one truly positive patient tests +)
+```
+
+## 4(a) By hand: the probability of exactly 10 positives
+
+**By hand.** With $n = 15$, $k = 10$, $p = 0.8$:
+
+1. *Choose which patients.* The 10 detected patients can be any 10 of
+   the 15: $\binom{15}{10} = \frac{15!}{10!\,5!} =
+   \frac{15 \cdot 14 \cdot 13 \cdot 12 \cdot 11}{5 \cdot 4 \cdot 3
+   \cdot 2 \cdot 1} = \frac{360360}{120} = 3003$ different sets.
+2. *Probability of one such pattern.* Any one specific pattern with 10
+   detections and 5 misses has probability
+   $0.8^{10} \times 0.2^{5}$ (the trials are independent, so the
+   per-patient probabilities multiply — Notes Part 1, §5).
+   Numerically, $0.8^{10} = 0.107374$ and $0.2^{5} = 0.00032$, so one
+   pattern has probability $0.107374 \times 0.00032 = 0.0000344$
+   (about $3.4 \times 10^{-5}$).
+3. *Add the patterns.* All 3003 patterns have the same probability and
+   are mutually exclusive, so
+   $P(X = 10) = 3003 \times 0.8^{10} \times 0.2^{5}
+   = 3003 \times 0.0000344 \approx 0.1032$.
+
+So even though 12 positives is the *expected* count ($15 \times 0.8$),
+getting *exactly* 10 is about a 10% event. The chunk below repeats
+exactly these three steps in code — the same
+`choose(15, k) * p^k * (1-p)^(n-k)` expression the notes use to plot a
+binomial distribution by hand (Notes Part 1, §5; Week2 Script.R,
+Part 1, Code Chunk 3):
+
+```{r q4a-hand}
+# Step 1: the binomial coefficient, by the choose() function of the notes
+# and, to show the work, by the factorial definition directly.
+choose(15, 10)                                  # = 3003
+factorial(15) / (factorial(10) * factorial(5))  # same number, by hand
+
+# Steps 2-3: one pattern's probability, times the number of patterns.
+choose(15, 10) * 0.8^10 * 0.2^5                 # = 0.1032 (see 4b)
+```
+
+## 4(b) Confirmation with `dbinom()`
+
+`dbinom(k, n, p)` is the "d" member of the binomial's d/p/q/r family
+(Notes Part 1, §6): it evaluates the same formula directly.
+
+```{r q4b-dbinom}
+dbinom(10, size = n.patients, prob = p.sens)  # P(X = 10), from dbinom()
+# Compare with the hand result from 4(a): the two agree.
+choose(15, 10) * 0.8^10 * 0.2^5 - dbinom(10, size = n.patients, prob = p.sens)
+```
+
+## 4(c) The probability of at least 10 positives, two analytic ways
+
+"At least 10" is the event $X \ge 10$, i.e. $X \in \{10, 11, 12, 13, 14,
+15\}$. **Way 1 — `pbinom()`:** `pbinom(q, n, p)` is the cumulative
+$P(X \le q)$, so $P(X \ge 10) = 1 - P(X \le 9)$ — the complement is
+taken at **9**, not 10, because 10 itself belongs to the event we want
+(the standard off-by-one trap with discrete distributions).
+**Way 2 — summing `dbinom()`:** add the six individual probabilities.
+
+```{r q4c-atleast}
+# Way 1: the CDF (pbinom) and the complement rule.
+p.atleast.pbinom <- 1 - pbinom(9, size = n.patients, prob = p.sens)
+p.atleast.pbinom
+
+# Way 2: sum the individual dbinom() probabilities for 10 through 15.
+p.atleast.sum <- sum(dbinom(10:15, size = n.patients, prob = p.sens))
+p.atleast.sum
+
+# The two approaches agree (difference is zero up to rounding).
+p.atleast.pbinom - p.atleast.sum
+```
+
+Both give $P(X \ge 10) \approx 0.9389$: with a test this sensitive and
+15 truly positive patients, at least 10 detections is the overwhelming
+norm, not a lucky outcome.
+
+## 4(d) The same answer a third way: simulation with `rbinom()`
+
+`rbinom(N, n, p)` draws $N$ independent binomial counts — $N$ simulated
+repeats of the whole 15-patient screen. The fraction of repeats with at
+least 10 positives should land close to the analytic 0.9389, by the
+same "simulate it, then check it against the theoretical answer" logic
+as Questions 1 and 2 (and the error should be of order
+$\sqrt{0.94 \times 0.06 / 10000} \approx 0.002$):
+
+```{r q4d-simulation}
+set.seed(444)  # reproducible draws (Notes Part 1, Section 6)
+
+# 10,000 simulated screens of 15 patients each.
+sim.q4 <- rbinom(10000, size = n.patients, prob = p.sens)
+
+# Simulated P(X >= 10): the proportion of screens with >= 10 positives.
+mean(sim.q4 >= 10)
+
+# For completeness, the simulated P(X = 10) as well, against part (a)/(b).
+mean(sim.q4 == 10)
+
+# Side by side with the analytic answers:
+c(simulated.at.least.10 = mean(sim.q4 >= 10), analytic.from.4c = p.atleast.pbinom,
+  simulated.exactly.10  = mean(sim.q4 == 10),  analytic.from.4b = dbinom(10, n.patients, p.sens))
+```
+
+The simulated proportion (about `r round(mean(sim.q4 >= 10), 3)` with
+this seed) matches the analytic value
+`r round(p.atleast.pbinom, 3)` to within simulation noise, and the
+simulated exactly-10 frequency likewise matches 0.1032 from parts
+(a)–(b). Three routes — formula, distribution functions, brute-force
+simulation — give one answer, which is the point of the whole of
+Part A.
+
+## 4(e) Using `qbinom()`: the smallest $k$ with $P(X \ge k) \le 0.05$
+
+`qbinom()` inverts the CDF: `qbinom(0.95, n, p)` returns the smallest
+count $q$ with $P(X \le q) \ge 0.95$, i.e. the count that already
+covers 95% of the distribution. The event $X \ge k$ has probability
+$\le 0.05$ exactly when $X \le k-1$ covers *at least* 95%, so the $k$
+asked for is one more than that quantile. The chunk computes it that
+way and then verifies every candidate $k$ directly with `pbinom()`
+(`sapply()` over the candidates, as in Week2 Script.R, Part 2,
+Code Chunk 13):
+
+```{r q4e-qbinom}
+# The 95% quantile of the distribution: P(X <= 14) is the first
+# cumulative probability to reach 0.95.
+q.95 <- qbinom(0.95, size = n.patients, prob = p.sens)
+q.95
+pbinom(q.95, size = n.patients, prob = p.sens)      # >= 0.95
+pbinom(q.95 - 1, size = n.patients, prob = p.sens)  # <  0.95
+
+# Therefore the smallest k whose UPPER tail is at most 0.05 is:
+k.star <- q.95 + 1
+k.star
+
+# Direct verification over all candidate thresholds k = 0..16:
+# P(X >= k) = 1 - P(X <= k - 1), computed for each k with sapply().
+tail.probs <- sapply(0:16, function(k) 1 - pbinom(k - 1, size = n.patients,
+                                                  prob = p.sens))
+data.frame(k = 0:16, P.X.at.least.k = round(tail.probs, 4))
+min((0:16)[tail.probs <= 0.05])  # confirms k.star is the smallest such k
+1 - pbinom(k.star - 1, size = n.patients, prob = p.sens)      # P(X >= 15)
+1 - pbinom(k.star - 2, size = n.patients, prob = p.sens)      # P(X >= 14)
+```
+
+**Plain-English meaning.** $k = 15$. With a test of sensitivity 0.8
+applied to 15 truly positive patients, "at least $k$ patients test
+positive" only becomes a genuinely rare event — probability at most
+5% — when $k$ is *all fifteen of them*: a perfect screen happens with
+probability $0.8^{15} \approx 0.035$, while even "at least 14" is not
+rare at all, at about 0.167 (it includes the fairly common
+exactly-14 outcome). Note what this number is *not*: it is not a
+typical value or a threshold we expect to stay above — the expected
+count is 12, and counts of 14 or 15 are the distribution's *upper*
+tail. $k = 15$ is the answer to "how many detections would have to pile
+up before the pile-up itself would be surprising at the 5% level if
+the sensitivity really were 0.8?" Because the binomial is discrete, no
+threshold gives exactly 0.05: the achievable upper-tail probabilities
+jump straight from 0.167 (at least 14) to 0.035 (all 15), and $k=15$ is
+the first jump that lands at or below 0.05.
+
+---
+
+# Summary of Part A
+
+* **Q1.** An estimator is a random variable; its denominator controls a
+  bias–precision trade-off that is large at small $n$ and vanishes as
+  $n$ grows. $n-1$ is aimed best, $n$ is biased low, $n-2$ is biased
+  high, least steady, and undefined at $n = 2$.
+* **Q2.** Under a true null, t-test p-values are uniform, brute-force
+  rank p-values agree with them, and the agreement tightens as $n$
+  grows because the t-test's variance estimate stabilises — the
+  brute-force logic needs no such estimate and is the version that
+  transfers to real data.
+* **Q3.** The t-test tests *means* only. Two processes with the same
+  mean but completely different shapes and spreads return textbook
+  null behaviour — flat p-values, ~5% "significant" — so a
+  non-significant t-test never means "the distributions are the same".
+* **Q4.** The binomial family (`dbinom`/`pbinom`/`qbinom`/`rbinom`)
+  answers counting questions exactly, and simulation with `rbinom()`
+  reproduces those answers: $P(X = 10) \approx 0.1032$,
+  $P(X \ge 10) \approx 0.9389$, and the smallest upper-tail threshold
+  at the 5% level is $k = 15$.
+
+---
+
+# AI use and reflection note — EDIT BEFORE SUBMITTING
+
+*Per the RBIF 111 syllabus (submit an AI reflection note if AI was used;
+cite AI use as for any other source): this draft was prepared with the
+help of an AI assistant (Ember/Muse) working strictly from the Week 2
+Notes Parts 1–2 and the Week 2 script file. I have run the code myself,
+checked that the knitted output matches the numbers quoted in the text,
+and I can explain every step — including why the $n-2$ estimator is
+undefined at $n = 2$, why the brute-force p-values in Q2 use
+`rank(-abs(diff))`, why the t-test in Q3 is blind to everything except
+the mean, and why `pbinom()` is evaluated at 9 (not 10) in Q4(c).
+[Adjust this note in your own words before submitting, and delete this
+instruction.]*

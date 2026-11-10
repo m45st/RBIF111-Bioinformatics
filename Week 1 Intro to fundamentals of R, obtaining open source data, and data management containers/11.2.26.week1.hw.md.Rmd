@@ -503,7 +503,10 @@ Bioconductor objects orient data with genes as rows and samples as columns becau
 But stats tools like lm() expect the opposite thus one sample per row transposing.
 
 
-
+#------
+github link:
+https://github.com/m45st/RBIF111-Bioinformatics/blob/main/Week%201%20Intro%20to%20fundamentals%20of%20R%2C%20obtaining%20open%20source%20data%2C%20and%20data%20management%20containers/11.2.26.week1.hw.md.Rmd
+#-------
 
 
 

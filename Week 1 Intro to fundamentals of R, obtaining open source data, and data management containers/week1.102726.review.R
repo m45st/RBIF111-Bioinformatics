@@ -1,111 +1,109 @@
-#102626
-#packagae data
-
+# 102626
+# packagae data
+data(iris)
+library(ggplot2)
 ggplot(iris, aes(x = Sepal.Length, y = Petal.Length, color = Species)) +
   geom_point()
 
-#loops and seqs.
+# loops and seqs.
 
 var1 <- 1
-for ( i in 1:5) var1+1
+for (i in 1:5) var1 + 1
 
 x <- 1
-for ( i in 1:3 ) x+i
+for (i in 1:3) x + i
 
-Inf-Inf #NaN
+Inf - Inf # NaN
 
 is.na(NA) # this is how we check if an object is NA!!
 
-x <-c(3,5)
-if ( any(x > 4) )"apples" else "oranges" # curly braces optional
+x <- c(3, 5)
+if (any(x > 4)) "apples" else "oranges" # curly braces optional
 
-if( any(x>6)){
+if (any(x > 6)) {
   "apples"
-}else{
+} else {
   "oranges"
 }
 
 
-if( any( x>4)){
-}else{
-  x <- x*2
+if (any(x > 4)) {} else {
+  x <- x * 2
   print(x)
 }
 
 
-samp <- c(3,4,5,7,8,10)
-ifelse( samp>5, "apples", "oranges" ) #fx
+samp <- c(3, 4, 5, 7, 8, 10)
+ifelse(samp > 5, "apples", "oranges") # fx
 
 
-for ( i in 1:3 ) print(paste("iteration",i))
+for (i in 1:3) print(paste("iteration", i))
 
-#scope is not applied to variables in R unlike in python, but local in function defs
+# scope is not applied to variables in R unlike in python, but local in function defs
 
 
-i <- 1; while( i<5){print(i);i <- i+1
+i <- 1
+while (i < 5) {
+  print(i)
+  i <- i + 1
 }
 i # 5
 
-#functions
+# functions
 
 
-
-my.max <- function( x , na.rm = F){
+my.max <- function(x, na.rm = F) {
   x.max <- 0
-  for( i in x){
-    if(is.na(i)){
-      if(na.rm){
+  for (i in x) {
+    if (is.na(i)) {
+      if (na.rm) {
         next
-      }else{
+      } else {
         return(NA)
       }
     }
   }
-  if (i > x.max){
+  if (i > x.max) {
     x.max <- i
   }
-  return (x.max) # return max value
+  return(x.max) # return max value
 }
-
 
 
 # || logical OR for single operands
 # |. logical OR for e-by-e opernads
 
-fx <- function(x, y = some.function(), z = some.var){
-  if( x == 0) print("done")
-  if( x == 1) print(y)
-  if( x == 2) print(z)
+fx <- function(x, y = some.function(), z = some.var) {
+  if (x == 0) print("done")
+  if (x == 1) print(y)
+  if (x == 2) print(z)
 }
 
 fx(0) # first if gets executed
 
-#trad loops vs vectors
+# trad loops vs vectors
 
 
+clrs <- c("red", "blue", "gray", "pink", "cyan")
+clrs
 
-clrs <- c("red","blue","gray","pink","cyan"); clrs
+y <- 2:6
+y
 
-y = 2:6;y
+clrs[c(T, F)]
 
-clrs[c(T,F)]
+names(y) <- clrs
+y
 
-names(y) <- clrs; y
 
-
-dfr = c(1,1,2,1 , NA)
+dfr <- c(1, 1, 2, 1, NA)
 dfr
 dfr[2]
 
-tot =0
-for( e in dfr){
-  tot = tot+e
+tot <- 0
+for (e in dfr) {
+  tot <- tot + e
 }
-df_mean = tot / length(dfr)
+df_mean <- tot / length(dfr)
 
 mean(dfr)
-
-
-
-
-

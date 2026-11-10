@@ -1,0 +1,148 @@
+---
+title: "11.09.26.hw2.md"
+author: "Martin Djamongue"
+date: "2026-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1.
+
+```{r}
+
+#### Setting up looping numbers ####
+################################
+max.sample.size <- 20
+n.sim <- 10000 # number of re-samplings we are going to run for each sample size
+
+#### Setting up matrices to save data. 
+
+sd.n <- matrix(0, nrow = n.sim , ncol =  max.sample.size) # table of data for sd with n
+sd.ori <- matrix(0, nrow = n.sim, ncol = max.sample.size) # table of data for sd with n-1
+sd.n2 <- matrix(0, nrow = n.sim, ncol = max.sample.size) # table of data for sd with n-2
+
+# sqrt(  sum((x - mean(x))^2) / (n-1)    )  
+
+x_sd_n <-  function( data){
+  n = length( data)
+  sqrt(  sum((data - mean(data))^2) / n )
+}
+
+x_sd_n2 <- function( data){
+    n = length( data)
+  sqrt(  sum((data - mean(data))^2) / (n-2) )
+}
+
+#### perform computations in a loop ####
+########################################
+for (sample.size in 2:max.sample.size) {
+   for (i.sim in 1:n.sim) { # resample n.sim times. In each iteration:
+    samp <- rnorm( sample.size , mean = 0 , sd = 1) 
+    
+    # first set of sd ( n)
+    sd.n [ i.sim , sample.size] <-  x_sd_n(samp)
+    
+    #second set of sd ( n-1)
+    
+    sd.ori [ i.sim , sample.size] <- sd(samp)
+    
+    # third set of sd ( n-2)
+    
+    sd.n2 [i.sim , sample.size] <- x_sd_n2(samp)
+  
+   }
+}
+```
+
+
+### calculating the mean and spread of each of these three standard deviation estimates across all 𝑁 for current n
+
+
+```{r}
+
+n <- 2:max.sample.size 
+
+#apply( X = "DATAFRAME" , MARGIN = "2 -columns /. "1 - rows" , )
+
+#mean and spread for sd.n
+sd.n_mean <- apply(X = sd.n [, n], MARGIN =  2, FUN = mean) 
+sd.n_spread <- apply( sd.n[ , n] , 2, sd )
+
+#mean and spread for sd.ori ( n-1)
+
+sd.ori_mean <- apply(sd.ori[, n], 2, mean)
+sd.ori_spread <- apply(sd.ori[, n], 2, sd )
+
+#mean and spread for sd.n2 ( n-2)
+
+sd.n2_mean <- apply(sd.n2[, n], 2, mean)
+sd.n2_spread <- apply(sd.n2[, n], 2, sd )
+
+
+#summary table
+# 
+# dfr <- data.frame( n = n,
+#                    sd.n_mean =sd.n_mean,
+#                    sd.ori_mean = sd.ori_mean,
+#                    sd.n2_mean = sd.n2_mean,
+#                    
+#                    sd.n_spread = sd.n_spread,
+#                    sd.ori_spread = sd.ori_spread,
+#                    sd.n2_spread = sd.n2_spread)
+
+```
+
+
+### Plot the calculated means and spreads of all three estimators of the standard deviation as functions of sample size 𝑛
+
+```{r}
+
+# spreads across the 3 estimators of sd. against n 
+
+plot( n, sd.n2_spread, type ="n", ylim = c(0, 1) , main = "
+      spreads across  3 estimators(n, n-1, n-2) of sd. for n =20 ",
+      xlab = "sample size",
+      ylab = "standard deviation estimates") 
+
+points( n , sd.n_spread , pch = 19 , col= "green" )
+points( n , sd.ori_spread , pch = 15, col = "red")
+points( n , sd.n2_spread , pch = 4 , col ="blue")
+
+
+#means across the 3 estimators of mean against n
+
+plot( n, sd.n2_spread, type ="n" , ylim = c(0, 2) ,  main = "
+      means across  3 estimators(n, n-1, n-2) of sd. for n =20 ",
+      xlab = "sample size",
+      ylab = "mean sd estimates") 
+
+points( n , sd.n_mean , pch = 19 , col= "green" ) # n
+points( n , sd.ori_mean , pch = 10, col = "red") # n-1
+points( n , sd.n2_mean, pch = 4 , col ="black") #n-2
+
+
+
+
+
+
+```
+
+
+### 2: Behavior of the t-test under the null hypothesis using numerical simulation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
