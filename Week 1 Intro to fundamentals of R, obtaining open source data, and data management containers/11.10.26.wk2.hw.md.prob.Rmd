@@ -1,0 +1,450 @@
+---
+  title: "11.09.26.hw2.md"
+author: "Martin Djamongue"
+date: "2026-11-09"
+output: html_document
+---
+  
+  ```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### Goal: Exploring the notion of chance and how it applies to significance measures, and understanding the role of the assumptions made by specific tests (e.g. the t-test) using simulations based on known distributions such as rnorm() and dbinom() and applying do real world data from DuckDB/Parquet respository.
+
+
+
+### 1.Simulation based on rnorm, to study the performance of the “unbiased” estimator of standard deviation( n, n-1 & n-2 denominators)
+
+```{r}
+
+#### Setting up looping numbers ####
+################################
+max.sample.size <- 20
+n.sim <- 10000 # number of re-samplings we are going to run for each sample size
+
+#### Setting up matrices to save data. 
+
+sd.n <- matrix(0, nrow = n.sim , ncol =  max.sample.size) # table of data for sd with n
+sd.ori <- matrix(0, nrow = n.sim, ncol = max.sample.size) # table of data for sd with n-1
+sd.n2 <- matrix(0, nrow = n.sim, ncol = max.sample.size) # table of data for sd with n-2
+
+# sqrt(  sum((x - mean(x))^2) / (n-1)    )  
+
+x_sd_n <-  function( data){
+  n = length( data)
+  sqrt(  sum((data - mean(data))^2) / n )
+}
+
+x_sd_n2 <- function( data){
+  n = length( data)
+  sqrt(  sum((data - mean(data))^2) / (n-2) )
+}
+
+#### perform computations in a loop ####
+########################################
+for (sample.size in 2:max.sample.size) {
+  for (i.sim in 1:n.sim) { # resample n.sim times. In each iteration:
+    samp <- rnorm( sample.size , mean = 0 , sd = 1) 
+    
+    # first set of sd ( n)
+    sd.n [ i.sim , sample.size] <-  x_sd_n(samp)
+    
+    #second set of sd ( n-1)
+    
+    sd.ori [ i.sim , sample.size] <- sd(samp)
+    
+    # third set of sd ( n-2)
+    
+    sd.n2 [i.sim , sample.size] <- x_sd_n2(samp)
+    
+  }
+}
+```
+
+
+### calculating the mean and spread of each of these three standard deviation estimates across all 𝑁 for current n
+
+
+```{r}
+
+n <- 2:max.sample.size 
+
+#apply( X = "DATAFRAME" , MARGIN = "2 -columns /. "1 - rows" , )
+
+#mean and spread for sd.n
+sd.n_mean <- apply(X = sd.n [, n], MARGIN =  2, FUN = mean) 
+sd.n_spread <- apply( sd.n[ , n] , 2, sd )
+
+#mean and spread for sd.ori ( n-1)
+
+sd.ori_mean <- apply(sd.ori[, n], 2, mean)
+sd.ori_spread <- apply(sd.ori[, n], 2, sd )
+
+#mean and spread for sd.n2 ( n-2)
+
+sd.n2_mean <- apply(sd.n2[, n], 2, mean)
+sd.n2_spread <- apply(sd.n2[, n], 2, sd )
+
+
+#summary table
+# 
+# dfr <- data.frame( n = n,
+#                    sd.n_mean =sd.n_mean,
+#                    sd.ori_mean = sd.ori_mean,
+#                    sd.n2_mean = sd.n2_mean,
+#                    
+#                    sd.n_spread = sd.n_spread,
+#                    sd.ori_spread = sd.ori_spread,
+#                    sd.n2_spread = sd.n2_spread)
+
+```
+
+
+### Plot the calculated means and spreads of all three estimators of the standard deviation as functions of sample size 𝑛
+
+```{r}
+
+# spreads across the 3 estimators of sd. against n 
+
+plot( n, sd.n2_spread, type ="n", ylim = c(0, 1) , main = "
+      spreads across  3 estimators(n, n-1, n-2) of sd. for n =20 ",
+      xlab = "sample size",
+      ylab = "standard deviation estimates") 
+
+points( n , sd.n_spread , pch = 19 , col= "green" )
+points( n , sd.ori_spread , pch = 15, col = "red")
+points( n , sd.n2_spread , pch = 4 , col ="blue")
+
+
+#means across the 3 estimators of mean against n
+
+plot( n, sd.n2_spread, type ="n" , ylim = c(0, 2) ,  main = "
+      means across  3 estimators(n, n-1, n-2) of sd. for n =20 ",
+      xlab = "sample size",
+      ylab = "mean sd estimates") 
+
+points( n , sd.n_mean , pch = 19 , col= "green" ) # n
+points( n , sd.ori_mean , pch = 10, col = "red") # n-1
+points( n , sd.n2_mean, pch = 4 , col ="black") #n-2
+
+
+
+
+
+
+```
+
+
+### 2: Behavior of the t-test under the null hypothesis using numerical simulation.
+
+
+```{r}
+
+arb_mean <- 2
+arb_var <- 3 ; arb_sd = sqrt(arb_var)
+n1 <- 7
+n2 <- 9
+smpl_1 <- rnorm( n1, mean = arb_mean , sd = sqrt( arb_var))
+smpl_2 <- rnorm( n2, mean = arb_mean , sd = sqrt(arb_var))
+
+#Ho: mean of smpl_1 - smpl_2 = 0
+#Ha:mean of smpl_1 - smpl_2 != 0
+
+#mean difference of smpl_1 and smpl_2
+
+mean.diff_smpl1_2 <- mean(smpl_1) - mean( smpl_2)
+
+t.test( smpl_1 , smpl_2 , var.equal = TRUE) # since both sample were generated from 
+#via rnorm with both mean and sd known.
+
+# 	Two Sample t-test
+# 
+# data:  smpl_1 and smpl_2
+# t = 1.7874, df = 14, p-value = 0.09554
+# alternative hypothesis: true difference in means is not equal to 0
+# 95 percent confidence interval:
+#  -0.2823871  3.1066603
+# sample estimates:
+# mean of x mean of y 
+#  2.754624  1.342488 
+
+p_value = t.test( smpl_1 , smpl_2 , var.equal = TRUE)$p.value
+p_value
+
+#evidence is consistent with the Ho. hypothesis as p.value (0.09553928) > 0.05
+
+```
+
+### resmapling functions
+
+```{r}
+
+rsmpl <- function( n1, n2, n.sim = 10000, mu = 2, sd = sqrt(3) ) {
+  
+  #### Step 1: create a matrix containing the resamplings (10,000 rows for the simulations and 12 columns for the resamplings).
+  ## Step 1: the resampling matrix — n.sim rows x (n1 + n2) columns.
+  simulation_matrix <- matrix( rnorm(n.sim * (n1 + n2), mean = mu, sd = sd), nrow = n.sim, ncol = n1 + n2) 
+  
+  
+  #### Step 2: define a function that will calculate the difference between the means of sample 1 and sample 2 in our representation of the data such as:
+  mean.diff <- function(x) mean(x[1:n1])-mean(x[(n1+1):(n1+n2)])
+  
+  # Step 3: calculate the difference in the means for all rows of your matrix. Save it in an object called #sim.diff.
+  
+  sim.diff <- apply(simulation_matrix, 1, mean.diff)
+  
+  t.test_p_values <- apply(simulation_matrix, 1, function(x) t.test(x[1:n1], x[(n1 + 1):(n1 + n2)])$p.value)
+  
+  
+  #### Step 4: calculate the brute force p-value by taking the rank of the negative absolute value of sim.diff divided by the length of sim.diff. Save this in a vector called sim.p.rk
+  
+  sim.p.rk <- rank( -abs(sim.diff) ) / length(sim.diff)
+  
+  list( n1 =n1 , n2 =n2 , sim.diff = sim.diff , sim.p.rk = sim.p.rk , t.test_p_values = t.test_p_values)
+}
+
+
+```
+
+
+### visual analysis- plots
+
+- the distribution of differences observed in all the resamplings
+- the distribution of t-test p-values obtained for the pairs of samples in each resampling
+- the distribution of brute-force p-values obtained for the pairs of samples in each resampling
+- a scatter plot of t-test p-values versus the differences between the means in each pair of samples drawn
+- a scatter plot of brute-force p-values versus the differences between the means (in this scatterplot, each point should represent a single resampling experiment, x-axis = difference, y-axis = p-value)
+- a scatter plot of t-test p-values vs brute-force p-values
+
+## --- general plot function
+
+
+```{r}
+plt <-  function( mtrix ){
+  par(mfrow = c(2, 3))
+  # (a) distribution of differences
+  hist(mtrix$sim.diff, breaks = 50, col = "lightblue", border = "white",
+       main = paste0("(a) Mean differences  n1=", n1, ", n2=", n2),
+       xlab = "mean(n1) - mean(n2)")
+  
+  
+  # (b) distribution of t-test p-values
+  hist(mtrix$t.test_p_values, breaks = 50, col = "grey", border = "white",
+       main = "(b) t-test p-values", xlab = "p-values")
+  
+  # (c) distribution of brute-force p-values
+  hist(mtrix$sim.diff, breaks = 50, col = "lightgreen",
+       main = "(c) Brute-force p-values", xlab = "p-value")
+  
+  # (d) t test.p values vs mean difference
+  plot(  mtrix$sim.diff,mtrix$t.test_p_values, pch = 20, cex = 0.3, col = rgb(0, 0, 0, 0.15),
+         main = "t.test.p_values vs sim_difference", xlab = "difference", ylab = "t-test P-value")
+  
+  # (e) brute-force p vs mean difference
+  plot(mtrix$sim.diff, mtrix$sim.p.rk, pch = 20, cex = 0.3, col = rainbow(2),
+       main = "brute force p-values vs sim_diff", xlab = "difference", ylab = "brute-force p")
+  
+  # (f) t.test_p-values vs brute-force p-values
+  plot( mtrix$t.test_p_values, mtrix$sim.p.rk , pch = 20, cex = 0.1, col = rainbow(2),
+        cex.main =.9,
+        main = "t-test p-values VS brute-force p-values", xlab = "brute-force p", 
+        ylab = "t-test p")
+  
+  
+  
+  
+  par(mfrow = c(1, 1))
+}
+```
+
+
+### plots small sample size (  n1 <-  7; n2 <- 9 )
+
+```{r}
+
+n1 <-  7; n2 <- 9
+small_samp <- rsmpl( n1, n2) # sample function execution
+plt( small_samp) # plot function execution
+
+```
+### plots of resampling with larger sample size. (4X) (n1 <-28 ; n2 <- 36)
+
+```{r}
+n1 <-28 ; n2 <- 36
+
+large_samp <- rsmpl( n1 , n2)
+
+plt(large_samp)
+
+
+
+```
+
+### 3.a. Using rnorm, to create two samples that result in an insignificant t-test p-value, but represent two very different processes 
+
+```{r}
+
+# sampling functions 
+
+stdr_fx <- function( n){
+  rnorm( n , mean = 0 , sd = 1)
+}
+
+non_stdr_fx <- function( n){
+  ctr <- sample(c(-5, 5), n, replace = TRUE) 
+  rnorm( n , mean = ctr , sd = 1)
+}
+
+```
+
+### getting 2 distinct samples 
+
+```{r}
+
+samp_a <- stdr_fx( 1000)
+samp_b <- non_stdr_fx(100000)
+par(mfrow = c(2, 3))
+
+hist(samp_a)
+
+hist(samp_b)
+
+par(mfrow = c(1, 1))
+```
+
+### 3.b. Plots the resulting distribution of p-values obtained across multiple trials under t.tests
+
+
+```{r}
+
+tot_trials <- 100000 # number of repeated experiments
+n <- 100 # sample size drawn from each process
+
+
+p.values <- numeric(n) 
+
+for (i in 1:tot_trials) { p.values[i] <- t.test(stdr_fx(n), non_stdr_fx(n))$p.value 
+# select  one sample from each
+}
+hist(p.values, breaks = 20, main = "t-test p-values: N(0,1) vs union of N(-10,1)/N(10,1)",
+     xlab = "p-value", col = "grey") 
+```
+# The test deals with 2 distinct sample and since it's a t.test, our goal will be to assess if sample1 and sample2 have same means or not.
+Ho: mean of sample1 - mean of sample =0
+Ha: mean of sample1 - mean of sample !=0
+based on the samples setup, where samp_a comes from a normal distribution and samp_b from an non-normal distribution, a standard t.test where var.equal=T is performed. From the plot, the 2 samples appear to have the same mean majority of the time, judging by the p-values. this may be due to the fact that the simulation is done with such a huge sample size and several trials.
+
+
+### 4.Suppose a diagnostic test has a known sensitivity of 0.8 (i.e., it correctly identifies a true positive 80% of the time), and you screen 𝑛=15 patients who are all, in truth, positive.
+
+4a.
+
+
+
+
+
+
+
+
+### 5a. Part B: Applying it to real data
+
+
+
+```{r}
+
+library(repoquet)
+library(DBI)
+library(duckdb)
+library(ggplot2)
+
+
+config_path <- "repoquet_public_example/repository_config.R"
+cfg <- load_repository_config( config_path)
+temp_dir <- file.path(cfg$FormattedDBPath, "duckdb_temp")
+dir.create(temp_dir, recursive = TRUE, showWarnings = FALSE)
+
+con <- open_duckdb(
+  FormattedDBPath = cfg$FormattedDBPath,
+  DBName = cfg$DBName,
+  TempDirPath = temp_dir,
+  GB = cfg$DuckDB_GB,
+  ReadOnly = TRUE
+)
+
+nhanes_tables<- DBI::dbListTables(con)
+nhanes_tables <- sort(grep("^NHANES_" , nhanes_tables, value = TRUE, ignore.case = TRUE))
+head(nhanes_tables, 5)
+
+
+
+nhanes_table <- nhanes_tables[32] # selecting the BMI data frame
+DBI::dbGetQuery(con, paste0("DESCRIBE ", nhanes_table))
+
+bmi <- DBI::dbGetQuery(con, paste0( "SELECT * FROM ", DBI::dbQuoteIdentifier(con, nhanes_table)))
+
+head(bmi) # view few rows and columns
+
+nhanes_table <- nhanes_tables[62] # selecting the DEMO data frame
+DBI::dbGetQuery(con, paste0("DESCRIBE ", nhanes_table))
+
+demo <- DBI::dbGetQuery(con, paste0( "SELECT * FROM ", DBI::dbQuoteIdentifier(con, nhanes_table)))
+
+head(demo)
+
+dfr_m <-merge( bm, demo , "SEQN" ) # combing the 2 data frame by sequence number
+
+str( dfr_m)
+
+dfr_m$RIAGENDR <- factor(dfr_m$RIAGENDR ,
+                         levels = c(1, 2),
+                         labels = c("male" , "female"))
+
+tail(dfr_m , 100
+     )
+
+#performing t. test to compare average BMI between males and females
+
+
+```
+
+### 5.a.Normality check via shapiro wilk test and QQ plots
+
+```{r}
+library(data.table)
+library(DT)
+library(ALL)
+bmi <- dfr_m$BMXBMI
+gender <- dfr_m$RIAGENDR
+
+
+qqnorm( bmi[gender =="male"])
+qqline(bmi[gender =="male"], col="red", lwd=2)
+
+qqnorm( bmi[gender =="female"])
+
+qqline(bmi[gender =="female"], col="red", lwd=2)
+
+
+#normality via test
+
+# shapiro.test( bmi[gender =="male"]) # fails to to n= 5000 limit
+# shapiro.test( bmi[gender =="female"])
+
+# Ho: data is normally distributed
+# Ha:  data is not normally distributed
+
+ks.test( bmi[gender =="male"] , "pnorm") # p-value < 2.2e-16
+ks.test( bmi[gender =="female"] , "pnorm") #p-value < 2.2e-16
+
+#both are normal under ks test
+
+
+
+```
+
+
+
+
+
+
+
+

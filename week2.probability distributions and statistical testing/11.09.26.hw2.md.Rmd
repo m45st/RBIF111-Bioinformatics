@@ -262,39 +262,8 @@ plt <-  function( mtrix ){
 ```{r}
 
 n1 <-  7; n2 <- 9
-small_samp <- rsmpl( n1, n2)
-plt( small_samp)
-
-# par(mfrow = c(2, 3))
-# 
-#     # (a) distribution of differences
-#     hist(small_samp$sim.diff, breaks = 50, col = "lightblue", border = "white",
-#          main = paste0("(a) Mean differences  n1=", n1, ", n2=", n2),
-#          xlab = "mean(n1) - mean(n2)")
-# 
-# 
-#  # (b) distribution of t-test p-values
-#     hist(small_samp$t.test_p_values, breaks = 50, col = "grey", border = "white",
-#          main = "(b) t-test p-values", xlab = "p-values")
-# 
-#     # (c) distribution of brute-force p-values
-#     hist(small_samp$sim.diff, breaks = 50, col = "lightgreen",
-#          main = "(c) Brute-force p-values", xlab = "p-value")
-# 
-#     # (d) t test.p values vs mean difference
-#     plot(  small_samp$sim.diff,small_samp$t.test_p_values, pch = 20, cex = 0.3, col = rgb(0, 0, 0, 0.15),
-#          main = "t.test.p_values vs sim_difference", xlab = "difference", ylab = "t-test P-value")
-# 
-#     # (e) brute-force p vs mean difference
-#     plot(small_samp$sim.diff, small_samp$sim.p.rk, pch = 20, cex = 0.3, col = rainbow(2),
-#          main = "brute force p-values vs sim_diff", xlab = "difference", ylab = "brute-force p")
-# 
-#     # (f) t.test_p-values vs brute-force p-values
-#     plot( small_samp$t.test_p_values, small_samp$sim.p.rk , pch = 20, cex = 0.1, col = rainbow(2),
-#           cex.main =.9,
-#          main = "t-test p-values VS brute-force p-values", xlab = "brute-force p", 
-#          ylab = "t-test p")
-
+small_samp <- rsmpl( n1, n2) # sample function execution
+plt( small_samp) # plot function execution
 
 ```
 ### plots of resampling with larger sample size. (4X) (n1 <-28 ; n2 <- 36)
@@ -310,10 +279,119 @@ plt(large_samp)
 
 ```
 
+### 3.a. Using rnorm, to create two samples that result in an insignificant t-test p-value, but represent two very different processes 
+
+```{r}
+
+# sampling functions 
+
+stdr_fx <- function( n){
+  rnorm( n , mean = 0 , sd = 1)
+}
+
+non_stdr_fx <- function( n){
+  ctr <- sample(c(-5, 5), n, replace = TRUE) 
+  rnorm( n , mean = ctr , sd = 1)
+}
+
+```
+
+### getting 2 distinct samples 
+
+```{r}
+
+samp_a <- stdr_fx( 1000)
+samp_b <- non_stdr_fx(100000)
+ par(mfrow = c(2, 3))
+
+hist(samp_a)
+
+hist(samp_b)
+
+ par(mfrow = c(1, 1))
+```
+
+### 3.b. Plots the resulting distribution of p-values obtained across multiple trials under t.tests
+
+
+```{r}
+
+tot_trials <- 100000 # number of repeated experiments
+n <- 100 # sample size drawn from each process
+
+
+p.values <- numeric(n) 
+
+for (i in 1:tot_trials) { p.values[i] <- t.test(stdr_fx(n), non_stdr_fx(n))$p.value 
+# select  one sample from each
+}
+hist(p.values, breaks = 20, main = "t-test p-values: N(0,1) vs union of N(-10,1)/N(10,1)",
+xlab = "p-value", col = "grey") 
+```
+# The test deals with 2 distinct sample and since it's a t.test, our goal will be to assess if sample1 and sample2 have same means or not.
+Ho: mean of sample1 - mean of sample =0
+Ha: mean of sample1 - mean of sample !=0
+based on the samples setup, where samp_a comes from a normal distribution and samp_b from an non-normal distribution, a standard t.test where var.equal=T is performed. From the plot, the 2 samples appear to have the same mean majority of the time, judging by the p-values. this may be due to the fact that the simulation is done with such a huge sample size and several trials.
+
+
+### 4.Suppose a diagnostic test has a known sensitivity of 0.8 (i.e., it correctly identifies a true positive 80% of the time), and you screen 𝑛=15 patients who are all, in truth, positive.
+
+4a.
 
 
 
 
+
+
+
+
+### 5a. Part B: Applying it to real data
+
+
+
+```{r}
+
+library(repoquet)
+library(DBI)
+library(duckdb)
+library(ggplot2)
+
+
+config_path <- "repoquet_public_example/repository_config.R"
+cfg <- load_repository_config( config_path)
+temp_dir <- file.path(cfg$FormattedDBPath, "duckdb_temp")
+dir.create(temp_dir, recursive = TRUE, showWarnings = FALSE)
+
+con <- open_duckdb(
+  FormattedDBPath = cfg$FormattedDBPath,
+  DBName = cfg$DBName,
+  TempDirPath = temp_dir,
+  GB = cfg$DuckDB_GB,
+  ReadOnly = TRUE
+)
+
+nhanes_tables<- DBI::dbListTables(con)
+nhanes_tables <- sort(grep("^NHANES_" , nhanes_tables, value = TRUE, ignore.case = TRUE))
+head(nhanes_tables, 5)
+
+
+
+nhanes_table <- nhanes_tables[32]
+DBI::dbGetQuery(con, paste0("DESCRIBE ", nhanes_table))
+
+
+bmi_data <- DBI::dbGetQuery(con, paste0( "SELECT * FROM ", DBI::dbQuoteIdentifier(con, nhanes_table)))
+
+head(bmi_data)
+str(bmi_data)
+
+#column to calculate mean from 
+weight_in_kg <- bmi_data$BMXWT
+super_vector_mean( weight_in_kg , na.rm = T)
+#regular mean function
+mean( weight_in_kg , na.rm = T)
+
+```
 
 
 
