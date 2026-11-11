@@ -40,4 +40,23 @@ I think your post was very comprehensive, and your examples were very detailed t
 
 In your second example on pain crises reduction in 8 patients, highlighting the relationship between sample size and standard error is also very insightful. With regards to sample size, how many patients would you consider to be large enough in a study to minimize the standard error? You also point out factors such as sample representativeness and data independence as crucial elements. Will you consider them taking precedence over sample size? 
 
+#-----------
+by Charles-William Ruel - Saturday, November 7, 2026, 8:04 PM
 
+A sample statistic it’s self is a random variable, as it can take on multiple different results when sampled repeatedly. As we saw in the weekly example that performed brute force resampling on the ALL dataset, there were 2491 samples taken that had a different mean than the original sampling. This sample statistic of 9 samples of men’s ages from the ALL dataset had a standard deviation of 11.55, whereas the population standard deviation was 13.50. As we can see the sample statistic here has a different mean and variance compared to the population dataset, even if it is pulled directly from the population. If we were to report just the mean of our sample subset (31.89) compared to the population mean (30.93), it is misleading as we can see there is a difference between the two means. However if we include standard deviations for each (11.55 and 13.50 respectively) we can see that the difference between sample and population (0.96) is well within one standard deviation.
+
+An example where a sample population was used to make a conclusion on a population is the Steering Committee of the Physicians' Health Study Research Group, 1988 Asprin study, which had a sample population of 22,071 men. Half of the participants were given asprin, and the other half were given a placebo. The study showed a heart attack happened 1.7% of the time in placebo group, and only 0.9% in the treatment group, which corresponded to a calculated p-value of < .00001 (1). It was ultimately determined that the difference in heart attack rate had such a low magnitude (Δ=0.8%) that the sample size did not have enough power (<0.4) to make an inference on the population (1).
+
+![plt](image-1.png)
+
+As we can see in men’s ages in the ALL dataset, as we increase sample size towards the population size (81 in this case), our mean and standard deviation values hone into the population mean and standard deviation (red point). But, in the case of a small sample size (points 1 and 2, n = 5,15) the mean and standard deviation are quite far from the population values. Thus in the case where we are trying to draw a conclusion for a population from a sample statistic, a small sample size can make the overstatement even more severe.
+
+Citations:
+
+Rosnow, R. L., & Rosenthal, R. (1989). Statistical procedures and the justification of knowledge in psychological science. American Psychologist, 44(10), 1276–1284. https://doi.org/10.1037/0003-066X.44.10.1276
+
+
+Hello Charles,
+Thanks for sharing your post. Your point regarding the sample statistics as a random variable is very clear and I agree with your statement that reporting just the mean of a sample subset can be misleading without the standard deviation. However, you also point out that even with the standard deviation, the sample statistic may still be far from the true population parameter, as evidenced by your example of the ALL dataset where the sample mean and standard deviation were quite far from the population values. 
+For your example, "An example where a sample population was used to make a conclusion on a population is the Steering Committee of the Physicians' Health Study Research Group, 1988 Asprin study, which had a sample population of 22,071 men."
+I believe you meant to simply say "sample" instead of "sample population"? since "sample" is already a subset of the population; otherwise, the statement would be redundant. But 

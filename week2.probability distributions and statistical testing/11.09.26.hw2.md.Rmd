@@ -8,8 +8,11 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+### Goal: Exploring the notion of chance and how it applies to significance measures, and understanding the role of the assumptions made by specific tests (e.g. the t-test) using simulations based on known distributions such as rnorm() and dbinom() and applying do real world data from DuckDB/Parquet respository.
 
-## 1.
+
+
+### 1.Simulation based on rnorm, to study the performance of the “unbiased” estimator of standard deviation( n, n-1 & n-2 denominators)
 
 ```{r}
 
@@ -133,6 +136,202 @@ points( n , sd.n2_mean, pch = 4 , col ="black") #n-2
 
 ### 2: Behavior of the t-test under the null hypothesis using numerical simulation.
 
+
+```{r}
+
+arb_mean <- 2
+arb_var <- 3 ; arb_sd = sqrt(arb_var)
+n1 <- 7
+n2 <- 9
+smpl_1 <- rnorm( n1, mean = arb_mean , sd = sqrt( arb_var))
+smpl_2 <- rnorm( n2, mean = arb_mean , sd = sqrt(arb_var))
+
+#Ho: mean of smpl_1 - smpl_2 = 0
+#Ha:mean of smpl_1 - smpl_2 != 0
+
+#mean difference of smpl_1 and smpl_2
+
+mean.diff_smpl1_2 <- mean(smpl_1) - mean( smpl_2)
+
+t.test( smpl_1 , smpl_2 , var.equal = TRUE) # since both sample were generated from 
+#via rnorm with both mean and sd known.
+
+# 	Two Sample t-test
+# 
+# data:  smpl_1 and smpl_2
+# t = 1.7874, df = 14, p-value = 0.09554
+# alternative hypothesis: true difference in means is not equal to 0
+# 95 percent confidence interval:
+#  -0.2823871  3.1066603
+# sample estimates:
+# mean of x mean of y 
+#  2.754624  1.342488 
+
+p_value = t.test( smpl_1 , smpl_2 , var.equal = TRUE)$p.value
+p_value
+
+#evidence is consistent with the Ho. hypothesis as p.value (0.09553928) > 0.05
+
+```
+
+### resmapling functions
+
+```{r}
+
+rsmpl <- function( n1, n2, n.sim = 10000, mu = 2, sd = sqrt(3) ) {
+  
+  #### Step 1: create a matrix containing the resamplings (10,000 rows for the simulations and 12 columns for the resamplings).
+  ## Step 1: the resampling matrix — n.sim rows x (n1 + n2) columns.
+  simulation_matrix <- matrix( rnorm(n.sim * (n1 + n2), mean = mu, sd = sd), nrow = n.sim, ncol = n1 + n2) 
+
+
+ #### Step 2: define a function that will calculate the difference between the means of sample 1 and sample 2 in our representation of the data such as:
+ mean.diff <- function(x) mean(x[1:n1])-mean(x[(n1+1):(n1+n2)])
+
+# Step 3: calculate the difference in the means for all rows of your matrix. Save it in an object called #sim.diff.
+
+sim.diff <- apply(simulation_matrix, 1, mean.diff)
+
+t.test_p_values <- apply(simulation_matrix, 1, function(x) t.test(x[1:n1], x[(n1 + 1):(n1 + n2)])$p.value)
+
+
+#### Step 4: calculate the brute force p-value by taking the rank of the negative absolute value of sim.diff divided by the length of sim.diff. Save this in a vector called sim.p.rk
+
+sim.p.rk <- rank( -abs(sim.diff) ) / length(sim.diff)
+
+list( n1 =n1 , n2 =n2 , sim.diff = sim.diff , sim.p.rk = sim.p.rk , t.test_p_values = t.test_p_values)
+}
+
+
+```
+
+
+### visual analysis- plots
+
+- the distribution of differences observed in all the resamplings
+- the distribution of t-test p-values obtained for the pairs of samples in each resampling
+- the distribution of brute-force p-values obtained for the pairs of samples in each resampling
+- a scatter plot of t-test p-values versus the differences between the means in each pair of samples drawn
+- a scatter plot of brute-force p-values versus the differences between the means (in this scatterplot, each point should represent a single resampling experiment, x-axis = difference, y-axis = p-value)
+- a scatter plot of t-test p-values vs brute-force p-values
+
+### --- plot function
+
+
+```{r}
+plt <-  function( mtrix ){
+  par(mfrow = c(2, 3))
+  
+  #lab <- paste0("(n1=", mtrix$n1, ", n2=", mtrix$n2, ")") # sample sizes
+
+# 
+# hist(mtrix$sim.diff, breaks = 50, main = paste("a. Differences of means", lab), xlab =
+# "mean1 - mean2")
+# 
+# hist(mtrix$t.test_p_values, breaks = 20, main = paste("b. t-test p-values", lab), xlab = "p-value")
+# 
+# hist(mtrix$sim.p.rk, breaks = 20, main = paste("c. Brute-force p-values", lab), xlab =
+# "p-value") 
+# 
+# plot(mtrix$sim.diff, mtrix$t.test_p_values, pch = ".", main = "d. t-test p vs difference", xlab =
+# "difference", ylab = "t-test p")
+# 
+# plot(mtrix$sim.diff, mtrix$sim.p.rk, pch = ".", main = "e. Brute-force p vs difference", xlab =
+# "difference", ylab = "brute-force p")
+# 
+# plot(mtrix$sim.p.rk, mtrix$t.test_p_values, pch = ".", main = "f. t-test p vs brute-force p", xlab =
+# "brute-force p", ylab = "t-test p")
+# 
+# abline(0, 1, col = "red") 
+
+
+   # (a) distribution of differences
+    hist(mtrix$sim.diff, breaks = 50, col = "lightblue", border = "white",
+         main = paste0("(a) Mean differences  n1=", n1, ", n2=", n2),
+         xlab = "mean(n1) - mean(n2)")
+
+
+ # (b) distribution of t-test p-values
+    hist(mtrix$t.test_p_values, breaks = 50, col = "grey", border = "white",
+         main = "(b) t-test p-values", xlab = "p-values")
+
+    # (c) distribution of brute-force p-values
+    hist(mtrix$sim.diff, breaks = 50, col = "lightgreen",
+         main = "(c) Brute-force p-values", xlab = "p-value")
+
+    # (d) t test.p values vs mean difference
+    plot(  mtrix$sim.diff,mtrix$t.test_p_values, pch = 20, cex = 0.3, col = rgb(0, 0, 0, 0.15),
+         main = "t.test.p_values vs sim_difference", xlab = "difference", ylab = "t-test P-value")
+
+    # (e) brute-force p vs mean difference
+    plot(mtrix$sim.diff, mtrix$sim.p.rk, pch = 20, cex = 0.3, col = rainbow(2),
+         main = "brute force p-values vs sim_diff", xlab = "difference", ylab = "brute-force p")
+
+    # (f) t.test_p-values vs brute-force p-values
+    plot( mtrix$t.test_p_values, mtrix$sim.p.rk , pch = 20, cex = 0.1, col = rainbow(2),
+          cex.main =.9,
+         main = "t-test p-values VS brute-force p-values", xlab = "brute-force p", 
+         ylab = "t-test p")
+
+  
+  
+  
+  par(mfrow = c(1, 1))
+}
+```
+
+
+
+
+```{r}
+
+n1 <-  7; n2 <- 9
+small_samp <- rsmpl( n1, n2)
+
+par(mfrow = c(2, 3))
+
+    # (a) distribution of differences
+    hist(small_samp$sim.diff, breaks = 50, col = "lightblue", border = "white",
+         main = paste0("(a) Mean differences  n1=", n1, ", n2=", n2),
+         xlab = "mean(n1) - mean(n2)")
+
+
+ # (b) distribution of t-test p-values
+    hist(small_samp$t.test_p_values, breaks = 50, col = "grey", border = "white",
+         main = "(b) t-test p-values", xlab = "p-values")
+
+    # (c) distribution of brute-force p-values
+    hist(small_samp$sim.diff, breaks = 50, col = "lightgreen",
+         main = "(c) Brute-force p-values", xlab = "p-value")
+
+    # (d) t test.p values vs mean difference
+    plot(  small_samp$sim.diff,small_samp$t.test_p_values, pch = 20, cex = 0.3, col = rgb(0, 0, 0, 0.15),
+         main = "t.test.p_values vs sim_difference", xlab = "difference", ylab = "t-test P-value")
+
+    # (e) brute-force p vs mean difference
+    plot(small_samp$sim.diff, small_samp$sim.p.rk, pch = 20, cex = 0.3, col = rainbow(2),
+         main = "brute force p-values vs sim_diff", xlab = "difference", ylab = "brute-force p")
+
+    # (f) t.test_p-values vs brute-force p-values
+    plot( small_samp$t.test_p_values, small_samp$sim.p.rk , pch = 20, cex = 0.1, col = rainbow(2),
+          cex.main =.9,
+         main = "t-test p-values VS brute-force p-values", xlab = "brute-force p", 
+         ylab = "t-test p")
+
+
+```
+### resampling with larger sample size. (4X)
+
+```{r}
+n1 <-28 ; n2 <- 36
+
+large_samp <- rsmpl( n1 , n2)
+
+plt(large_samp)
+
+
+
+```
 
 
 
