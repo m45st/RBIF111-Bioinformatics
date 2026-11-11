@@ -412,8 +412,8 @@ tail(dfr_m , 100
 library(data.table)
 library(DT)
 library(ALL)
-bmi <- dfr_m$BMXBMI
-gender <- dfr_m$RIAGENDR
+male_bmi <- dfr_m$BMXBMI[ dfr_m$RIAGENDR == "male"]
+female_bmi <- dfr_m$BMXBMI[ dfr_m$RIAGENDR == "female"]
 
 
 qqnorm( bmi[gender =="male"])
@@ -424,6 +424,8 @@ qqnorm( bmi[gender =="female"])
 qqline(bmi[gender =="female"], col="red", lwd=2)
 
 
+# hist(  bmi[gender =="female"] ) # appears right skewed
+# hist( bmi[gender =="male"]) # appears right skewed
 #normality via test
 
 # shapiro.test( bmi[gender =="male"]) # fails to to n= 5000 limit
@@ -435,12 +437,43 @@ qqline(bmi[gender =="female"], col="red", lwd=2)
 ks.test( bmi[gender =="male"] , "pnorm") # p-value < 2.2e-16
 ks.test( bmi[gender =="female"] , "pnorm") #p-value < 2.2e-16
 
-#both are normal under ks test
+#both are normal under ks test 
 
 
 
 ```
 
+### 5.b. boxplot of bmi ~ gender
+
+```{r}
+
+
+ggplot( dfr_m,  aes(x =BMXBMI, y = RIAGENDR , fill = RIAGENDR))+geom_boxplot()+
+  labs( title = "BMI across gender",
+         x = "BMI",
+         y= "Gender") +
+  theme_classic()
+
+```
+
+### 5c. Performing hypothesis testing ( sample t.test)
+
+```{r}
+
+#Ho: median bmi in males - median bmi in females = 0
+#Ha: median bmi in males - median bmi in females != 0
+
+#since the the QQ plots + QQline showed great deviations of the points from the #line, we assume the data is not normally distributed and used non-parametric #alternative of the t.test
+
+wilcox.test(male_bmi , female_bmi, conf.int = TRUE, paired = FALSE, formula = "lhs")
+
+
+```
+### Conclusion: The results suggest evidence against  the Ho:, ( p-value < 2.2e-16). This implies that the median bmi between males and females are not the same.
+
+
+### 6.Numeric column with the greatest variance and overlap between outcome groups
+The family income ratio variable is used in this demo. (INDFMPIR)
 
 
 
