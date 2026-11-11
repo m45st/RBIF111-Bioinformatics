@@ -215,36 +215,12 @@ list( n1 =n1 , n2 =n2 , sim.diff = sim.diff , sim.p.rk = sim.p.rk , t.test_p_val
 - a scatter plot of brute-force p-values versus the differences between the means (in this scatterplot, each point should represent a single resampling experiment, x-axis = difference, y-axis = p-value)
 - a scatter plot of t-test p-values vs brute-force p-values
 
-### --- plot function
+## --- general plot function
 
 
 ```{r}
 plt <-  function( mtrix ){
   par(mfrow = c(2, 3))
-  
-  #lab <- paste0("(n1=", mtrix$n1, ", n2=", mtrix$n2, ")") # sample sizes
-
-# 
-# hist(mtrix$sim.diff, breaks = 50, main = paste("a. Differences of means", lab), xlab =
-# "mean1 - mean2")
-# 
-# hist(mtrix$t.test_p_values, breaks = 20, main = paste("b. t-test p-values", lab), xlab = "p-value")
-# 
-# hist(mtrix$sim.p.rk, breaks = 20, main = paste("c. Brute-force p-values", lab), xlab =
-# "p-value") 
-# 
-# plot(mtrix$sim.diff, mtrix$t.test_p_values, pch = ".", main = "d. t-test p vs difference", xlab =
-# "difference", ylab = "t-test p")
-# 
-# plot(mtrix$sim.diff, mtrix$sim.p.rk, pch = ".", main = "e. Brute-force p vs difference", xlab =
-# "difference", ylab = "brute-force p")
-# 
-# plot(mtrix$sim.p.rk, mtrix$t.test_p_values, pch = ".", main = "f. t-test p vs brute-force p", xlab =
-# "brute-force p", ylab = "t-test p")
-# 
-# abline(0, 1, col = "red") 
-
-
    # (a) distribution of differences
     hist(mtrix$sim.diff, breaks = 50, col = "lightblue", border = "white",
          main = paste0("(a) Mean differences  n1=", n1, ", n2=", n2),
@@ -281,46 +257,47 @@ plt <-  function( mtrix ){
 ```
 
 
-
+### plots small sample size (  n1 <-  7; n2 <- 9 )
 
 ```{r}
 
 n1 <-  7; n2 <- 9
 small_samp <- rsmpl( n1, n2)
+plt( small_samp)
 
-par(mfrow = c(2, 3))
-
-    # (a) distribution of differences
-    hist(small_samp$sim.diff, breaks = 50, col = "lightblue", border = "white",
-         main = paste0("(a) Mean differences  n1=", n1, ", n2=", n2),
-         xlab = "mean(n1) - mean(n2)")
-
-
- # (b) distribution of t-test p-values
-    hist(small_samp$t.test_p_values, breaks = 50, col = "grey", border = "white",
-         main = "(b) t-test p-values", xlab = "p-values")
-
-    # (c) distribution of brute-force p-values
-    hist(small_samp$sim.diff, breaks = 50, col = "lightgreen",
-         main = "(c) Brute-force p-values", xlab = "p-value")
-
-    # (d) t test.p values vs mean difference
-    plot(  small_samp$sim.diff,small_samp$t.test_p_values, pch = 20, cex = 0.3, col = rgb(0, 0, 0, 0.15),
-         main = "t.test.p_values vs sim_difference", xlab = "difference", ylab = "t-test P-value")
-
-    # (e) brute-force p vs mean difference
-    plot(small_samp$sim.diff, small_samp$sim.p.rk, pch = 20, cex = 0.3, col = rainbow(2),
-         main = "brute force p-values vs sim_diff", xlab = "difference", ylab = "brute-force p")
-
-    # (f) t.test_p-values vs brute-force p-values
-    plot( small_samp$t.test_p_values, small_samp$sim.p.rk , pch = 20, cex = 0.1, col = rainbow(2),
-          cex.main =.9,
-         main = "t-test p-values VS brute-force p-values", xlab = "brute-force p", 
-         ylab = "t-test p")
+# par(mfrow = c(2, 3))
+# 
+#     # (a) distribution of differences
+#     hist(small_samp$sim.diff, breaks = 50, col = "lightblue", border = "white",
+#          main = paste0("(a) Mean differences  n1=", n1, ", n2=", n2),
+#          xlab = "mean(n1) - mean(n2)")
+# 
+# 
+#  # (b) distribution of t-test p-values
+#     hist(small_samp$t.test_p_values, breaks = 50, col = "grey", border = "white",
+#          main = "(b) t-test p-values", xlab = "p-values")
+# 
+#     # (c) distribution of brute-force p-values
+#     hist(small_samp$sim.diff, breaks = 50, col = "lightgreen",
+#          main = "(c) Brute-force p-values", xlab = "p-value")
+# 
+#     # (d) t test.p values vs mean difference
+#     plot(  small_samp$sim.diff,small_samp$t.test_p_values, pch = 20, cex = 0.3, col = rgb(0, 0, 0, 0.15),
+#          main = "t.test.p_values vs sim_difference", xlab = "difference", ylab = "t-test P-value")
+# 
+#     # (e) brute-force p vs mean difference
+#     plot(small_samp$sim.diff, small_samp$sim.p.rk, pch = 20, cex = 0.3, col = rainbow(2),
+#          main = "brute force p-values vs sim_diff", xlab = "difference", ylab = "brute-force p")
+# 
+#     # (f) t.test_p-values vs brute-force p-values
+#     plot( small_samp$t.test_p_values, small_samp$sim.p.rk , pch = 20, cex = 0.1, col = rainbow(2),
+#           cex.main =.9,
+#          main = "t-test p-values VS brute-force p-values", xlab = "brute-force p", 
+#          ylab = "t-test p")
 
 
 ```
-### resampling with larger sample size. (4X)
+### plots of resampling with larger sample size. (4X) (n1 <-28 ; n2 <- 36)
 
 ```{r}
 n1 <-28 ; n2 <- 36
