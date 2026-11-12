@@ -1,14 +1,14 @@
 ---
-  title: "11.09.26.hw2.md"
+title: "11.09.26.hw2.md"
 author: "Martin Djamongue"
 date: "2026-11-09"
 output: html_document
 ---
   
-  ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T, message = F, warning = F)
 ```
-### Goal: Exploring the notion of chance and how it applies to significance measures, and understanding the role of the assumptions made by specific tests (e.g. the t-test) using simulations based on known distributions such as rnorm() and dbinom() and applying do real world data from DuckDB/Parquet respository.
+### Goal: Exploring the notion of chance and how it applies to significance measures, and understanding the role of the assumptions made by specific tests (e.g. the t-test) using simulations based on known distributions such as rnorm() and dbinom() and applying do real world data from DuckDB/Parquet repository.
 
 
 
@@ -156,17 +156,6 @@ mean.diff_smpl1_2 <- mean(smpl_1) - mean( smpl_2)
 t.test( smpl_1 , smpl_2 , var.equal = TRUE) # since both sample were generated from 
 #via rnorm with both mean and sd known.
 
-# 	Two Sample t-test
-# 
-# data:  smpl_1 and smpl_2
-# t = 1.7874, df = 14, p-value = 0.09554
-# alternative hypothesis: true difference in means is not equal to 0
-# 95 percent confidence interval:
-#  -0.2823871  3.1066603
-# sample estimates:
-# mean of x mean of y 
-#  2.754624  1.342488 
-
 p_value = t.test( smpl_1 , smpl_2 , var.equal = TRUE)$p.value
 p_value
 
@@ -197,7 +186,8 @@ rsmpl <- function( n1, n2, n.sim = 10000, mu = 2, sd = sqrt(3) ) {
   
   #### Step 4: calculate the brute force p-value by taking the rank of the negative absolute value of sim.diff divided by the length of sim.diff. Save this in a vector called sim.p.rk
   
-  sim.p.rk <- rank( -abs(sim.diff) ) / length(sim.diff)
+  sim.p.rk <- rank( -abs(sim.diff) ) / 10000
+  #
   
   list( n1 =n1 , n2 =n2 , sim.diff = sim.diff , sim.p.rk = sim.p.rk , t.test_p_values = t.test_p_values)
 }
@@ -236,7 +226,7 @@ plt <-  function( mtrix ){
        main = "(c) Brute-force p-values", xlab = "p-value")
   
   # (d) t test.p values vs mean difference
-  plot(  mtrix$sim.diff,mtrix$t.test_p_values, pch = 20, cex = 0.3, col = rgb(0, 0, 0, 0.15),
+  plot(  mtrix$sim.diff,mtrix$t.test_p_values, pch = 20, cex = 0.3,
          main = "t.test.p_values vs sim_difference", xlab = "difference", ylab = "t-test P-value")
   
   # (e) brute-force p vs mean difference
@@ -261,7 +251,7 @@ plt <-  function( mtrix ){
 
 ```{r}
 
-n1 <-  7; n2 <- 9
+n1 <-  3; n2 <- 5
 small_samp <- rsmpl( n1, n2) # sample function execution
 plt( small_samp) # plot function execution
 
@@ -278,6 +268,8 @@ plt(large_samp)
 
 
 ```
+### From the simulation the plot wih smaller sample size ( n= 3 and n= 5) do not appears to be significantly different from the larger sample size ( n= 28 and n= 36) in terms of the shapes of the distributions of the means differences and p-values. This mainly due to the fact that they both come from a normally distributed population ( rnorm()) and the many resampling simulation ( n.sim = 10000 ). But the highest mean differences in the smaller sample is about 4 while being ~1.5 in the larger sample sizes.
+
 
 ### 3.a. Using rnorm, to create two samples that result in an insignificant t-test p-value, but represent two very different processes 
 
@@ -334,14 +326,64 @@ Ha: mean of sample1 - mean of sample !=0
 based on the samples setup, where samp_a comes from a normal distribution and samp_b from an non-normal distribution, a standard t.test where var.equal=T is performed. From the plot, the 2 samples appear to have the same mean majority of the time, judging by the p-values. this may be due to the fact that the simulation is done with such a huge sample size and several trials.
 
 
-### 4.Suppose a diagnostic test has a known sensitivity of 0.8 (i.e., it correctly identifies a true positive 80% of the time), and you screen 𝑛=15 patients who are all, in truth, positive.
+### 4.a: Suppose a diagnostic test has a known sensitivity of 0.8 (i.e., it correctly identifies a true positive 80% of the time), and you screen 𝑛=15 patients who are all, in truth, positive..
 
-4a.
+For  \(n = 15\), \(k = 10\), \(p = 0.8\):
+
+i.  \(\binom{15}{10} = \frac{15!}{10!\,5!} = \frac{15 \cdot 14 \cdot 13 \cdot 12 \cdot 11}{5 \cdot 4 \cdot 3 \cdot 2 \cdot 1} = \frac{360360}{120} = 3003\) 
+
+ii.  \(0.8^{10} \times 0.2^{5}\)
+
+ \(P(X = 10) = 3003 \times 0.8^{10} \times 0.2^{5} = 3003 \times 0.0000344 \approx 0.1032\)
 
 
 
+```{r}
+#binomial probability formula and the combinatorics (𝑛hoose 𝑘) to obtain #the probability that exactly 10 of the #15 patients test positive.
 
 
+n.patients <- 15   # n: patients screened, all truly positive
+p.sens     <- 0.8  # P(one truly positive patient tests)
+```
+
+### 4.b:
+```{r}
+
+dbinom(10, size = n.patients, prob = p.sens)  
+```
+
+
+### 4.c:
+```{r}
+p.atleast.pbinom <- 1 - pbinom(9, size = n.patients, prob = p.sens)
+p.atleast.pbinom
+```
+
+### 4.d.
+```{r}
+
+sim.q4 <- rbinom(10000, size = n.patients, prob = p.sens)
+
+# Simulated P(X >= 10): the proportion of screens with >= 10 positives.
+mean(sim.q4 >= 10)
+```
+
+
+### 4.e. 
+```{r}
+
+
+q.95 <- qbinom(0.95, size = n.patients, prob = p.sens)
+q.95
+pbinom(q.95, size = n.patients, prob = p.sens)      # >= 0.95
+pbinom(q.95 - 1, size = n.patients, prob = p.sens)  # <  0.95
+
+# Therefore the smallest k whose UPPER tail is at most 0.05 is:
+k.star <- q.95 + 1
+k.star
+
+```
+### This values suggests that really only 80% good, then getting all 15 people positive is rare (only 3.5% chance). Getting 14 or more is not rare (16.7%).
 
 
 
@@ -390,42 +432,38 @@ demo <- DBI::dbGetQuery(con, paste0( "SELECT * FROM ", DBI::dbQuoteIdentifier(co
 
 head(demo)
 
-dfr_m <-merge( bm, demo , "SEQN" ) # combing the 2 data frame by sequence number
+dfr_m <-merge( bmi, demo , "SEQN" ) # combing the 2 data frame by sequence number
 
 str( dfr_m)
 
 dfr_m$RIAGENDR <- factor(dfr_m$RIAGENDR ,
                          levels = c(1, 2),
                          labels = c("male" , "female"))
-
-tail(dfr_m , 100
-     )
-
 #performing t. test to compare average BMI between males and females
-
+head(dfr_m)
 
 ```
 
 ### 5.a.Normality check via shapiro wilk test and QQ plots
 
 ```{r}
-library(data.table)
-library(DT)
-library(ALL)
+
 male_bmi <- dfr_m$BMXBMI[ dfr_m$RIAGENDR == "male"]
 female_bmi <- dfr_m$BMXBMI[ dfr_m$RIAGENDR == "female"]
 
+ par(mfrow = c(1, 2))
+qqnorm( male_bmi)
 
-qqnorm( bmi[gender =="male"])
-qqline(bmi[gender =="male"], col="red", lwd=2)
+qqline(male_bmi, col="red", lwd=2)
 
-qqnorm( bmi[gender =="female"])
+qqnorm( female_bmi)
 
-qqline(bmi[gender =="female"], col="red", lwd=2)
+qqline(female_bmi, col="red", lwd=2)
 
+ par(mfrow = c(1, 1))
 
-# hist(  bmi[gender =="female"] ) # appears right skewed
-# hist( bmi[gender =="male"]) # appears right skewed
+# hist(  male_bmi ) # appears right skewed
+# hist(female_bmi) # appears right skewed
 #normality via test
 
 # shapiro.test( bmi[gender =="male"]) # fails to to n= 5000 limit
@@ -434,11 +472,10 @@ qqline(bmi[gender =="female"], col="red", lwd=2)
 # Ho: data is normally distributed
 # Ha:  data is not normally distributed
 
-ks.test( bmi[gender =="male"] , "pnorm") # p-value < 2.2e-16
-ks.test( bmi[gender =="female"] , "pnorm") #p-value < 2.2e-16
+ks.test(male_bmi , "pnorm") # p-value < 2.2e-16
+ks.test(female_bmi , "pnorm") #p-value < 2.2e-16
 
 #both are normal under ks test 
-
 
 
 ```
@@ -465,7 +502,7 @@ ggplot( dfr_m,  aes(x =BMXBMI, y = RIAGENDR , fill = RIAGENDR))+geom_boxplot()+
 
 #since the the QQ plots + QQline showed great deviations of the points from the #line, we assume the data is not normally distributed and used non-parametric #alternative of the t.test
 
-wilcox.test(male_bmi , female_bmi, conf.int = TRUE, paired = FALSE, formula = "lhs")
+wilcox.test(male_bmi , female_bmi, conf.int = TRUE, paired = FALSE, formula = "lhs") #p-value < 2.2e-16
 
 
 ```
@@ -474,6 +511,139 @@ wilcox.test(male_bmi , female_bmi, conf.int = TRUE, paired = FALSE, formula = "l
 
 ### 6.Numeric column with the greatest variance and overlap between outcome groups
 The family income ratio variable is used in this demo. (INDFMPIR)
+
+a. 
+```{r}
+
+male_inc <-  dfr_m$INDFMPIR [ dfr_m$RIAGENDR == "male"]
+fem_inc <- dfr_m$INDFMPIR [ dfr_m $RIAGENDR == "female"]
+
+
+x.male_inc <- sample(male_inc[!is.na(male_inc)],10) # random sample: 10 male incomes
+x.fem_inc <- sample(fem_inc[!is.na(fem_inc)],10) # random sample: 10 female incomes
+
+
+#hypothesis test
+
+shapiro.test( x.male_inc) 
+shapiro.test( x.fem_inc)
+#both sample for the normal distribution
+
+
+ par(mfrow = c(1, 2))
+qqnorm(x.male_inc)
+qqline(x.male_inc, col="red", lwd=2)
+
+qqnorm( x.fem_inc)
+qqline(x.fem_inc, col="red", lwd=2)
+
+#Ho: mean family inc. in males - mean family inc. in females = 0
+#Ha: mean family inc. in males - mean family inc. in females != 0
+
+Pval <- t.test( x.male_inc , x.fem_inc)$p.value #p-value = 0.627
+
+#Conclusion: we fail to reject the Ho: as the p-values (0.627) is less than alpha of 0.05.
+#this suggest that means are between the 2 groups do not significantly differ. 95% CI: ( #-1.100656  1.774656)
+
+
+#Repeating sampling process 1000X
+Pvals <- numeric() # create an empty vector
+n.sims <- 1000 # perform 1000 resamplings
+for ( i.sim in 1:n.sims ) { # in each iteration:
+
+  x.male_inc <- sample(male_inc[!is.na(male_inc)],10) # random sample: 10 male incomes
+  x.fem_inc <- sample(fem_inc[!is.na(fem_inc)],10) # random sample: 10 female incomes
+
+ Pvals[i.sim] <- t.test(x.male_inc, x.fem_inc)$p.value   # <-- saves into the vector
+}
+
+hist(Pvals , main = "p.values for variable with wide variance")
+
+
+```
+
+
+### 6.b: simulation with data with overlapping variance/small variance across gender
+
+```{r}
+
+
+male_armc <-  dfr_m$BMXARMC [ dfr_m$RIAGENDR == "male"]
+fem_armc <- dfr_m$BMXARMC [ dfr_m $RIAGENDR == "female"]
+
+
+x.male_armc<- sample(male_armc[!is.na(male_armc)],10) # random sample: 10 male incomes
+x.fem_armc <- sample(fem_armc[!is.na(fem_armc)],10) # random sample: 10 female incomes
+
+
+#hypothesis test
+
+shapiro.test( x.male_armc) 
+shapiro.test( x.fem_armc)
+#both sample for the normal distribution
+
+
+ par(mfrow = c(1, 2))
+qqnorm(x.male_armc)
+qqline(x.male_armc, col="red", lwd=2)
+
+qqnorm( x.fem_armc)
+qqline(x.fem_armc, col="red", lwd=2)
+
+#Ho: mean arm circumference. in males - mean arm circumference in females = 0
+#Ha: mean arm circumference. in males - mean arm circumference in females != 0
+
+Pval_armc <- t.test( x.male_armc , x.fem_armc)$p.value #p-value = 0.6564139
+
+#Conclusion: we fail to reject the Ho: as the p-values (0.6564139) is less than alpha of 0.05.
+#this suggest that means are between the 2 groups do not significantly differ. 95% CI: (  -10.508558   6.788558)
+
+
+#Repeating sampling process 1000X
+
+n.sims <- 1000 # perform 1000 resamplings
+Pvals_armc <- numeric()
+for ( i.sim in 1:n.sims ) { # in each iteration:
+
+  x.male_armc <- sample(male_armc[!is.na(male_armc)],10) # random sample: 10 male armc
+  x.fem_armc <- sample(fem_armc[!is.na(fem_armc)],10) # random sample: 10 female armc
+
+ Pvals_armc[i.sim] <- t.test(x.male_armc, x.fem_armc)$p.value   # <-- saves into the vector
+}
+
+
+hist(Pvals_armc , main = "p.values for variable with least variance")
+```
+### The p.values obtained in this sampling process ( off a data variable in the data ) for both wide and close variances do not differ much .. this maybe be due the large number of repeated rsampling from the 2 data variables.
+this is similar to the results obtained from Q.2 as well.
+
+
+
+### 6.c.power anlaysis across sample with wide variance and low variance. income data vs arm circumference + simulation
+```{r}
+#power analysis for sample with wide variance
+
+t.test( male_inc , fem_inc)
+
+delta = mean(male_inc , na.rm = T ) - mean(fem_inc , na.rm = T)
+sd = ( var(male_inc, na.rm = T) + var( fem_inc, na.rm = T))/2
+
+power.t.test(delta=delta, sd=1, sig.level=0.05, n= 10 ) # power = 0.03688681
+power.t.test(delta=delta, sd=1, sig.level=0.05, n= 15 ) #  power = 0.04046267
+power.t.test(delta=delta, sd=1, sig.level=0.05, n= 20 ) #  power = 0.04364232
+
+
+#power analysis for sample with small variance
+
+t.test( male_armc , fem_armc) #p-value < 2.2e-16
+delta_low = mean(male_armc , na.rm = T ) - mean(fem_armc , na.rm = T)
+sd_low = ( var(male_armc, na.rm = T) + var( fem_armc, na.rm = T))/2
+
+power.t.test(delta=delta_low, sd=1, sig.level=0.05, power=0.80) #n = 27.86752
+
+```
+### based on the power analysis, about n= 2388 will be required to achieve a power of 80% in the wide variance samples
+and about n= 28 for power of 80% in the least varianced sample.
 
 
 

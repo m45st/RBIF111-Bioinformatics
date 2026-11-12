@@ -429,41 +429,42 @@ rewritten):
 # ---------------------------------------------------------------------------
 resample.study <- function(n1, n2, n.sim = 10000,
                            mu = 2, sigma = sqrt(3), seed = 1) {
-  set.seed(seed)  # each study is reproducible on its own
+ # set.seed(seed)  # each study is reproducible on its own
 
   ## Step 1: the resampling matrix — n.sim rows x (n1 + n2) columns.
   ## Every entry is an independent draw from the SAME normal
   ## distribution, so in every row both "samples" obey the null.
   sim.mat <- matrix(rnorm(n.sim * (n1 + n2), mean = mu, sd = sigma),
-                    nrow = n.sim, ncol = n1 + n2) }
+                    nrow = n.sim, ncol = n1 + n2) 
+  
 
-#   ## Step 2: difference between the means of sample 1 and sample 2
-#   ## within one row x of the matrix (indexing as in the prompt outline).
-#   mean.diff <- function(x) mean(x[1:n1]) - mean(x[(n1 + 1):(n1 + n2)])
-# 
-#   ## Step 3a: the difference in means for all rows of the matrix.
-#   diff.sim <- apply(sim.mat, 1, mean.diff)
-# 
-#   ## Step 3b: the t-test p-value for all rows of the matrix.
-#   ## A small local function runs the two-sided t-test on one row and
-#   ## keeps only its p-value; apply() runs it on every row.
-#   t.p.row <- function(x) t.test(x[1:n1], x[(n1 + 1):(n1 + n2)])$p.value
-#   t.p.sim <- apply(sim.mat, 1, t.p.row)
-# 
-#   ## Step 4: the brute-force p-value of each difference, from its rank.
-#   ## rank(-abs(diff)) is small exactly when |diff| is large (extreme);
-#   ## dividing by the number of resamplings turns the rank into the
-#   ## fraction of resamplings at least as extreme — a p-value obtained
-#   ## without any t-distribution mathematics at all.
-#   brute.p.sim <- rank(-abs(diff.sim)) / n.sim
-# 
-#   ## Hand everything back in one list.
-#   list(n1 = n1, n2 = n2, diff = diff.sim,
-#        t.p = t.p.sim, brute.p = brute.p.sim)
-# }
+  ## Step 2: difference between the means of sample 1 and sample 2
+  ## within one row x of the matrix (indexing as in the prompt outline).
+  mean.diff <- function(x) mean(x[1:n1]) - mean(x[(n1 + 1):(n1 + n2)])
+
+  ## Step 3a: the difference in means for all rows of the matrix.
+  diff.sim <- apply(sim.mat, 1, mean.diff)
+
+  ## Step 3b: the t-test p-value for all rows of the matrix.
+  ## A small local function runs the two-sided t-test on one row and
+  ## keeps only its p-value; apply() runs it on every row.
+  t.p.row <- function(x) t.test(x[1:n1], x[(n1 + 1):(n1 + n2)])$p.value
+  t.p.sim <- apply(sim.mat, 1, t.p.row)
+
+  ## Step 4: the brute-force p-value of each difference, from its rank.
+  ## rank(-abs(diff)) is small exactly when |diff| is large (extreme);
+  ## dividing by the number of resamplings turns the rank into the
+  ## fraction of resamplings at least as extreme — a p-value obtained
+  ## without any t-distribution mathematics at all.
+  brute.p.sim <- rank(-abs(diff.sim)) / n.sim
+
+  ## Hand everything back in one list.
+  list(n1 = n1, n2 = n2, diff = diff.sim,
+       t.p = t.p.sim, brute.p = brute.p.sim)
+}
 
 # Run 1: the original small sample sizes, n1 = 5 and n2 = 7.
-study.small <- resample.study(n1 = 5, n2 = 7, seed = 202)
+study.small <- resample.study(n1 = 10, n2 = 7)
 
 # A few summary numbers for the small-sample study, used in the text:
 # the centre and spread of the simulated differences, the fraction of
