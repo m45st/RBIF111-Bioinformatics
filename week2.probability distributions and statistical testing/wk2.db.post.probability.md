@@ -57,6 +57,16 @@ Rosnow, R. L., & Rosenthal, R. (1989). Statistical procedures and the justificat
 
 
 Hello Charles,
-Thanks for sharing your post. Your point regarding the sample statistics as a random variable is very clear and I agree with your statement that reporting just the mean of a sample subset can be misleading without the standard deviation. However, you also point out that even with the standard deviation, the sample statistic may still be far from the true population parameter, as evidenced by your example of the ALL dataset where the sample mean and standard deviation were quite far from the population values. 
+You make a good point on the ALL dataset and how the sample statistic varies from the "population parameter" from various samplings. I think it is important to emphasize that even if we consider the ALL dataset as the population, our sample statistic can still vary widely from the population parameter due to random sampling, as evidenced by the plot you provided.
+
 For your example, "An example where a sample population was used to make a conclusion on a population is the Steering Committee of the Physicians' Health Study Research Group, 1988 Asprin study, which had a sample population of 22,071 men."
-I believe you meant to simply say "sample" instead of "sample population"? since "sample" is already a subset of the population; otherwise, the statement would be redundant. But 
+I believe you meant to simply say "sample" instead of "sample population"? since "sample" is already a subset of the population; otherwise, the statement would be redundant. I realized that the study established a very small p-value of < 0.00001, which is much smaller than the typical significance level of 0.05. This suggests that the observed difference in heart attack rates between the placebo and aspirin groups was statistically significant. Implying that it was unlikely to have occurred by chance. However, as you pointed out, the magnitude of the difference (0.8%) was small, and the study's power was insufficient to make a definitive inference on the larger population. 
+I think this draws a good point on the idea that even though results may be statistically significant, they may not be practically significant/meaningful.
+
+with the placebo group having 1.7% and aspirin group having 0.9% heart attack and the difference is 0.8%; the professor highlighted on sample, which in your case is 22,071, though looking large enough , which other factors do you think could have contributed to the low statistical power? or how much more patients would you have needed in the study to increase statistical power significantly, if any?
+
+
+
+
+
+This highlights the importance of considering both statistical significance and practical significance when interpreting study results.

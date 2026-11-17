@@ -3,16 +3,17 @@ title: "11.09.26.hw2.md"
 author: "Martin Djamongue"
 date: "2026-11-09"
 output: html_document
+
 ---
   
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = T, message = F, warning = F)
 ```
-### Goal: Exploring the notion of chance and how it applies to significance measures, and understanding the role of the assumptions made by specific tests (e.g. the t-test) using simulations based on known distributions such as rnorm() and dbinom() and applying do real world data from DuckDB/Parquet repository.
+### Goal: Exploring the notion of chance and how it applies to significance measures, and understanding the role  of the assumptions made by specific tests (e.g. the t-test) using simulations based on known distributions such as rnorm() and dbinom() and applying do real world data from DuckDB/Parquet repository.
 
 
 
-### 1.Simulation based on rnorm, to study the performance of the “unbiased” estimator of standard deviation( n, n-1 & n-2 denominators)
+### 1.Simulation based on rnorm, to study the performance of the “unbiased” estimator of standard deviation( n, ### n-1 & n-2 denominators)
 
 ```{r}
 
@@ -27,16 +28,19 @@ sd.n <- matrix(0, nrow = n.sim , ncol =  max.sample.size) # table of data for sd
 sd.ori <- matrix(0, nrow = n.sim, ncol = max.sample.size) # table of data for sd with n-1
 sd.n2 <- matrix(0, nrow = n.sim, ncol = max.sample.size) # table of data for sd with n-2
 
-# sqrt(  sum((x - mean(x))^2) / (n-1)    )  
+
+# defining sd functions ( n, n-1, n-2)
 
 x_sd_n <-  function( data){
   n = length( data)
-  sqrt(  sum((data - mean(data))^2) / n )
+  sqrt(  sum((data - mean(data))^2) / n ) # function for n
 }
+
+# sqrt(  sum((x - mean(x))^2) / (n-1)    )   # standard sd function in R for n-1
 
 x_sd_n2 <- function( data){
   n = length( data)
-  sqrt(  sum((data - mean(data))^2) / (n-2) )
+  sqrt(  sum((data - mean(data))^2) / (n-2) ) # function for n-2
 }
 
 #### perform computations in a loop ####
@@ -645,7 +649,13 @@ power.t.test(delta=delta_low, sd=1, sig.level=0.05, power=0.80) #n = 27.86752
 ### based on the power analysis, about n= 2388 will be required to achieve a power of 80% in the wide variance samples
 and about n= 28 for power of 80% in the least varianced sample.
 
+#---------------
 
+github link
+
+https://github.com/m45st/RBIF111-Bioinformatics/blob/main/Week%201%20Intro%20to%20fundamentals%20of%20R%2C%20obtaining%20open%20source%20data%2C%20and%20data%20management%20containers/11.10.26.wk2.hw.md.prob.Rmd
+
+#--------
 
 
 
