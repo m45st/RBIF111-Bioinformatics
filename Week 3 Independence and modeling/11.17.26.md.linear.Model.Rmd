@@ -1,0 +1,20 @@
+---
+title: "11.17.26.md.linear.Model"
+author: "Martin Djamongue"
+date: "2026-11-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#### Goal:
+Developing working knowledge of linear models in R: fitting them, reading diagnostic plots, and judging when a model is (or is not) correctly specified.
+
+
+#### Functions to enable data download
+
+```{r}
+
+```
+
