@@ -16,5 +16,14 @@ Developing working knowledge of linear models in R: fitting them, reading diagno
 
 ```{r}
 
+x=1:20; 
+y=20+10*1:20+5*(1:20)^2+rnorm(20,0,200)
+
+
+
 ```
+
+
+#### Part B: Applying it to real data( GEO dataset )
+
 
