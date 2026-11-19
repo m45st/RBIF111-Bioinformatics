@@ -12,13 +12,76 @@ knitr::opts_chunk$set(echo = TRUE)
 Developing working knowledge of linear models in R: fitting them, reading diagnostic plots, and judging when a model is (or is not) correctly specified.
 
 
-#### Functions to enable data download
+#### sample Simulation foundations on a linear and quadratic  terms.
+general approach;
+
+- Create the simulated dataset.
+- Fit the three linear models described above.
+- Use the predict() function to obtain observed and fitted values.
+- Use the resid() function to obtain residual values.
+- Plot the observed and fitted data points, as well as the residual values.
+
 
 ```{r}
 
-x=1:20; 
-y=20+10*1:20+5*(1:20)^2+rnorm(20,0,200)
+#Starting with default variables to assess association between x and y
+#General f(x) = 20 + 10*x + 5x^2 to test with models.
+# + noise = rnorm(100, 0, 1.5)
+x=1:20 
+y = 20+10*1:20+5*(1:20)^2+rnorm(20,0,200)
+dfr <- data.frame(x , y)
 
+fx <-  20 + 10*x + 5*x^2  # function without noise
+fxn <- 20+10*1:20+5*(1:20)^2+rnorm(20,0,200) # function + noise
+
+
+
+#model 1; m1 :  intercept only (y~1) ; 
+
+m1 <-  lm( y~1 , data = dfr)
+summary(m1)
+#model 2; m2 : intercept and slope (y~x)
+
+m2 <- lm(y~x , data = dfr)
+summary(m2)
+#model 3, m3 = intercept, slope, and curvature,quadratic term x^2 #(y~x+I(x^2)).
+
+m3 <- lm( y~x + I(x^2) , data = dfr)
+summary(m3)
+
+#----predicting observed values
+m1.obs <- predict(m1)
+m2.obs <- predict(m1)
+m3.obs <- predict(m1)
+
+#---- obtaining residuals values
+
+m1.resid <- resid(m1)
+m2.resid <- resid(m2)
+m3.resid <- resid(m3)
+
+# plotting observed and fitted + residuals
+
+for (i in 1:3) {
+  lms <- list(m1, m2, m3)[[i]]          # model i
+  plot(dfr$x, dfr$y, pch = 19,
+       xlab = "x", ylab = "y",
+       main = c("(1) y ~ 1", "(2) y ~ x", "(3) y ~ x + I(x^2)")[i])
+  lines(dfr$x, fx, lty = 2, col = "grey50")        # truth
+  points(dfr$x, predict(lms), col = "red", pch = 20) # fitted pts
+  lines(dfr$x, predict(lms), col = "red")            # fitted shape
+}
+
+
+
+for (i in 1:3) {
+  lms<- list(m1, m2, m3)[[i]]
+  plot(fitted(lms), resid(lms), pch = 19,
+       xlab = "Fitted values", ylab = "Residuals",
+       main = c("(1) y ~ 1", "(2) y ~ x", "(3) y ~ x + I(x^2)")[i])
+  abline(h = 0, lty = 2, col = "red")
+  lines(lowess(fitted(lms), resid(lms)), col = "blue", lwd = 2)
+}
 
 
 ```
@@ -26,4 +89,7 @@ y=20+10*1:20+5*(1:20)^2+rnorm(20,0,200)
 
 #### Part B: Applying it to real data( GEO dataset )
 
+```{r}
+
+```
 
