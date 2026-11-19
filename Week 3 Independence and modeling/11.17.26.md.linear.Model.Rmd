@@ -67,10 +67,12 @@ for (i in 1:3) {
   plot(dfr$x, dfr$y, pch = 19,
        xlab = "x", ylab = "y",
        main = c("(1) y ~ 1", "(2) y ~ x", "(3) y ~ x + I(x^2)")[i])
-  lines(dfr$x, fx, lty = 2, col = "grey50")        # truth
-  points(dfr$x, predict(lms), col = "red", pch = 20) # fitted pts
+  lines(dfr$x, fx, lty = 2, col = "grey50")        # default
+  points(dfr$x, predict(lms), col = "red", pch = 20) # fitted points
   lines(dfr$x, predict(lms), col = "red")            # fitted shape
 }
+
+
 
 
 
@@ -84,7 +86,26 @@ for (i in 1:3) {
 }
 
 
+compare <- data.frame(
+  model = c("(1) y ~ 1", "(2) y ~ x", "(3) y ~ x + I(x^2)"),
+  intercept = c(coef(m1)[1], coef(m2)[1], coef(m3)[1]),
+  slope.x   = c(NA, coef(m2)[2], coef(m3)[2]),
+  coef.x2   = c(NA, NA, coef(m3)[3]),
+  sigma     = c(summary(m1)$sigma, summary(m2)$sigma,
+                summary(m3)$sigma),
+  R.squared = c(summary(m1)$r.squared, summary(m2)$r.squared,
+                summary(m3)$r.squared),
+  adj.R.squared = c(summary(m1)$adj.r.squared,
+                    summary(m2)$adj.r.squared,
+                    summary(m3)$adj.r.squared),
+  RSS = c(sum(m1.resid^2), sum(m2.resid^2), sum(m3.resid^2))
+)
+
 ```
+From the data simulation, model 1 and 2 appears to significantly explain the variability in y (p-value = c( 0.000232 *** , 2.41e-10 *** )  respectively.). However, when model 3( I(x^2)) is introduced, the the earlier observed influenced in m1 and m2 disappears leaving a fairly significant explained variability in the in y.( p-value = 0.00174 **)
+From the diagnostic plots, the data set in model 3 (m3 ~  y~x + I(x^2)) appears to be the only normally distributed fit, based on the QQ plot. 
+assessing each model individually,the variability accounted for by each model, m1,m2,m3 were 0% , 89% , 94% respectively. Though there's large effect size in the models, the noise might be a contributing factor.
+
 
 
 #### Part B: Applying it to real data( GEO dataset )
