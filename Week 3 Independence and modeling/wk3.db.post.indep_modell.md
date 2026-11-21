@@ -100,6 +100,24 @@ Using the case of racing where 1st , 2nd , 3rd places are of primary importance;
 -Martin
 
 
+#############################################################################
+by Charles-William Ruel - Sunday, November 15, 2026, 3:24 PM
+Question 2:
+The general rule of thumb “use a non-parametric test whenever you are not fully sure your data is normal”. As we can see in the example from the notes, when we perform either a t-test or the Mann-Whitney U test on normally distributed data (sample size of 20) we observe a power of 0.672 and 0.666 respectively (effect value 0.8). This demonstrates that power is irrespective to which test is performed on normal data.
+
+However, in the example of the skewed data we can observe that there is stronger power for the parametric t-test compared to the Mann-Whitney U test (0.395 vs 0.317). I’m not exactly sure what to make of this result, as the notes mention the power should be reversed and that is not what we observe.
+
+A more precise version of the rule of thumb would be to first confirm if data distribution is normal or not before applying a statistical test. This allows for correctly applying the statistical test to the observed data.
+
+Hello @Charles,
+Thanks for sharing your thoughts on this topic. you mentioned that due to the minimal difference in power between the two options ( parametric vs non parametric) 0.672 and  0.666 in the case of normal data, power will be irrespective of the test type, is it correct to assume that it is only the case when the sample size is small? 
+I do agree with your idea on what a more precise version will look like; performing diagnostics and checking for normality visually and through statistical tests before selecting an appropriate statistical test is indeed a more robust approach. But i've seen instances where test like shapiro-wilk or QQ plot use the residuals to check for normality  instead of the original data, which in this case, will require one to have fitted the linear model first and check the residuals. 
+In that regard, I wonder whether one should commence with the parametric test, from which the residuals can then be extracted and used to examine the normality assumption of the model. But i believe commencing with the parametric test is often a better approach and then adjusting accordingly based on the results especially if sample size is large enough, as the central limit theory will favor the results. 
+
+-Martin
+
+
+
 
 
 
