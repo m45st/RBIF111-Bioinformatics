@@ -441,13 +441,13 @@ norm_pvalues[biggest_p_loc_norm, ]
 # most significant p-value after normalization and it's gene name
 fit_norm_most <- lm(cont_var ~ expr_norm[smallest_p_loc_norm, ])
 summary(fit_norm_most)
-anova(fit_norm_most)
+anova(fit_norm_most) # Adjusted R-squared:  0.3461
 
 
 # least significant p-value after normalization and it's gene name
 fit_norm_least <- lm(cont_var ~ expr_norm[biggest_p_loc_norm, ])
 summary(fit_norm_least)
-anova(fit_norm_least)
+anova(fit_norm_least) #
 
 # gene names for the top and bottom genes
 gene_names_norm <- Table(getGEO("GPL570"))
@@ -456,6 +456,22 @@ top_gene_norm <- gene_names_norm[smallest_p_loc_norm, "Gene Symbol"]
 top_gene_norm
 bottom_gene_norm <- gene_names_norm[biggest_p_loc_norm, "Gene Symbol"]
 bottom_gene_norm
+
+# Does normalization have any impact on the p-value?
+# H0: Normalization does not have any significant impact on the p-value
+# HA: Normalization has a significant impact on the p-value
+
+# p-values for the top and bottom genes
+p_norm_most <- norm_pvalues$pvalue[smallest_p_loc_norm]
+p_norm_least <- norm_pvalues$pvalue[biggest_p_loc_norm]
+
+# p-values for the top and bottom genes
+p_most <- results$pvalue[smallest_p_loc]
+p_least <- results$pvalue[biggest_p_loc]
+
+# Perform t-test to compare the p-values
+t.test(p_norm_most, p_most, alternative = "two.sided")
+t.test(p_norm_least, p_least, alternative = "two.sided")
 ```
 
 
