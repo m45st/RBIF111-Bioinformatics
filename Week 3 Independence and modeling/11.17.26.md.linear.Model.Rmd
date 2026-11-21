@@ -456,34 +456,41 @@ top_gene_norm <- gene_names_norm[smallest_p_loc_norm, "Gene Symbol"]
 top_gene_norm
 bottom_gene_norm <- gene_names_norm[biggest_p_loc_norm, "Gene Symbol"]
 bottom_gene_norm
-
-# Does normalization have any impact on the p-value?
-# H0: Normalization does not have any significant impact on the p-value
-# HA: Normalization has a significant impact on the p-value
-
-# p-values for the top and bottom genes
-p_norm_most <- norm_pvalues$pvalue[smallest_p_loc_norm]
-p_norm_least <- norm_pvalues$pvalue[biggest_p_loc_norm]
-
-# p-values for the top and bottom genes
-p_most <- results$pvalue[smallest_p_loc]
-p_least <- results$pvalue[biggest_p_loc]
-
-# Perform t-test to compare the p-values
-t.test(p_norm_most, p_most, alternative = "two.sided")
-t.test(p_norm_least, p_least, alternative = "two.sided")
 ```
 
+####  Does normalization have any impact on the p-value?
+
+- H0: mean p-value before normalization = mean p-value after normalization
+- HA: mean p-value before normalization != mean p-value after normalization
 
 
+```{r}
+# Top 1000 p-values from both normalized and unnormalized data
+library(ggplot2)
 
+top_p_values_raw <- head(results$pvalue[!is.na(results$pvalue)], 1000)
+top_p_values_norm <- head(norm_pvalues$pvalue[!is.na(norm_pvalues$pvalue)], 1000)
 
+qqplot(top_p_values_raw, top_p_values_norm)
+hist(top_p_values_norm)
 
+LeveneTest(top_p_values_raw, top_p_values_norm)
+shapiro.test(top_p_values_raw)
+shapiro.test(top_p_values_norm)
 
+# Performing paired t-test to compare the p-values since data is normally distributed
 
-
-
-
+t.test(top_p_values_raw, top_p_values_norm, alternative = "two.sided", paired = T) # p-value = 9.511e-08
+```
+Conclusion:
+comparing the p-values before and after normalization, a paired t-test shows a statistically significant 
+difference between the two, with a p-value of 9.511e-08. This suggests that normalization
+ has a significant impact on the p-values.
+ Assessing the raw pvalues and normalized pvalues using boxplot, pvalues in the normalized gene expressions 
+ are observed to be more uniformly distributed compared to the raw pvalues.
+ Also, after normalization the gene with the most significant effect on BMI (EIF5) shows an improved
+ Adjuested effecy size (from 32% to about 34.61%). Gene with the worst association ( prev. TRG-AS1) changed to 
+ "CPLX3", this shows the previous one improved in p-value. 
 
 
 
