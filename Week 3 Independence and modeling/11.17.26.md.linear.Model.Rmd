@@ -284,16 +284,51 @@ anova(fit_most)
 genes_table <-Table(getGEO("GPL570"))
 
 most_sig_gene <- genes_table[ smallest_p_loc , "Gene Symbol"]
+most_sig_gene
 least_sig_gene <- genes_table[ biggest_p_loc , "Gene Symbol"]
+least_sig_gene
 
 plot(expr[smallest_p_loc, ], cont_var, pch = 19, col = "green",
      main =  paste( "bmi vs expression Gene_Name = " , most_sig_gene),
-     xlab = "Expression (log2)", ylab = "bmi") 
+     xlab = "Gene Expression", ylab = "bmi") 
 abline(fit_most, col = "red", lwd = 2)
 
-# results$padj <- p.adjust(results$pvalue, method = "BH")    # correct for 54,675 tests
-# results <- results[order(results$pvalue), ]
-# head(results, 20)
+
+par(mfrow = c(2, 2))
+plot(fit_most)
+
+#-#Least significant: model summary, ANOVA, diagnostics
+fit_least <- lm(cont_var ~ expr[biggest_p_loc, ])
+summary(fit_least)
+anova(fit_least)
+
+#plot
+par(mfrow = c(1, 1))
+
+plot(expr[biggest_p_loc, ], cont_var, pch = 19, col = "red",
+     main =  paste( "bmi vs expression Gene_Name = " , least_sig_gene),
+     xlab = "Gene Expression", ylab = "bmi") 
+abline(fit_least, col = "green", lwd = 2)
+
+#diagnostic plots
+
+par(mfrow = c(2, 2))
+plot(fit_least)
+
+
 
 ```
+
+**Discussion and conclusion**
+Based on the problem, the Null and Alternative hypothesis are set as;
+H0: genes expression level and BMI are independent
+HA: genes expression level and BMI are not independent
+
+Based on the on the linear model fit across genes, the most extreme genes considered to have some effect on the association between Gene expression and BMI were "EIF5" and "TRG-AS1". 
+EIF5 based on linear model fit and anova shows a negative ( slope = -8.991 ) and and adjusted effect size of about 32%. ANOVA should a significant association between the 2 variables ( p-value = 4.92e-05), suggesting evidence for the alternative hypothesis.
+In "TRG-AS1" , the model find barely to no relationship between bmi and TRG-AS1, returning a slope = 4.136e-06
+and an  effect size (R-squared:  -0.025 ). ANOVA returns a p-value = 1, suggesting evidence for the null hypothesis. Hence we conclude that this particular gene (TRG-AS1) has the least effect on the relationship between bmi and gene expression. Diagnostic plots in EIF5 follows the. normal distribution, better variance compared to TRG-AS1.
+
+
+#### 3. 
 
