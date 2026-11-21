@@ -244,22 +244,56 @@ metadata$age   <- as.numeric(sub("age: ", "", metadata$characteristics_ch1.1))
 metadata$bmi   <- as.numeric(sub("bmi: ", "", metadata$characteristics_ch1.2))
 
 ## ---- 3. Loop: one linear model per gene ---------------------------
-y_cont <- metadata$bmi     # the continuous dependent variable
+cont_var <- metadata$bmi     # the continuous dependent variable
 
 results <- data.frame(probe  = rownames(expr),
                       slope  = NA,
                       pvalue = NA)
 
 for (i in 1:nrow(expr)) {
-  fit <- lm(y_cont ~ expr[i, ])
-  results$pvalue <-  anova (fit)$`Pr(>F)`
-  #results$slope[i]  <- coef(fit)[2]                        # change in bmi per unit expression
- # results$pvalue[i] <- summary(fit)$coefficients[2, 4]     # p-value for that slope
+  fit <- lm(cont_var ~ expr[i, ])
+   results$slope[i]  <- coef(fit)[2]   
+   results$pvalue[i] <-  anova(fit)[["Pr(>F)"]][1]  
 }
 
-results$padj <- p.adjust(results$pvalue, method = "BH")    # correct for 54,675 tests
-results <- results[order(results$pvalue), ]
-head(results, 20)
+hist(results$pvalue , col = "purple",
+     main = "Distribution of ANOVA p-values across all genes (bmi ~ expression)",
+     xlab = "p-values(ANOVA)")
+
+#assessing e most extreme genes
+
+summary(results$pvalue)
+
+
+#      Min.   1st Qu.    Median      Mean   3rd Qu.      Max.       NAs 
+# 0.0000492 0.2337905 0.4840769 0.4914808 0.7475298 0.9999971      4397 
+
+smallest_p_loc <- which.min(results$pvalue) # location of smallest pvalue
+biggest_p_loc<- which.max( results$pvalue) #location of largest pvalue
+ 
+results[smallest_p_loc , ] 
+results[biggest_p_loc , ]
+
+#Most significant: model summary, ANOVA, diagnostics
+
+fit_most <- lm(cont_var ~ expr[smallest_p_loc, ])
+summary(fit_most)
+anova(fit_most)
+
+#plot of extreme with the smallest pvalue
+genes_table <-Table(getGEO("GPL570"))
+
+most_sig_gene <- genes_table[ smallest_p_loc , "Gene Symbol"]
+least_sig_gene <- genes_table[ biggest_p_loc , "Gene Symbol"]
+
+plot(expr[smallest_p_loc, ], cont_var, pch = 19, col = "green",
+     main =  paste( "bmi vs expression Gene_Name = " , most_sig_gene),
+     xlab = "Expression (log2)", ylab = "bmi") 
+abline(fit_most, col = "red", lwd = 2)
+
+# results$padj <- p.adjust(results$pvalue, method = "BH")    # correct for 54,675 tests
+# results <- results[order(results$pvalue), ]
+# head(results, 20)
 
 ```
 
