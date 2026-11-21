@@ -471,18 +471,52 @@ library(ggplot2)
 top_p_values_raw <- head(results$pvalue[!is.na(results$pvalue)], 1000)
 top_p_values_norm <- head(norm_pvalues$pvalue[!is.na(norm_pvalues$pvalue)], 1000)
 
+# testing normality
 qqplot(top_p_values_raw, top_p_values_norm)
-hist(top_p_values_norm)
-
-LeveneTest(top_p_values_raw, top_p_values_norm)
 shapiro.test(top_p_values_raw)
 shapiro.test(top_p_values_norm)
 
 # Performing paired t-test to compare the p-values since data is normally distributed
-
 t.test(top_p_values_raw, top_p_values_norm, alternative = "two.sided", paired = T) # p-value = 9.511e-08
+
+# scatter plot
+library(ggplot2)
+
+
+dfr_comparison <- data.frame(raw = top_p_values_raw, norm = top_p_values_norm)
+
+# before normalization
+par(mfrow = c(1, 3))
+ggplot(data = dfr_comparison, aes(x = raw)) +
+  geom_histogram(bins = 30, fill = "blue", color = "black") +
+  labs(
+    title = "Distribution of p-values before normalization",
+    x = "P-values before normalization",
+    y = "Frequency"
+  )
+
+# after normalization
+ggplot(data = dfr_comparison, aes(x = norm)) +
+  geom_histogram(bins = 30, fill = "green", color = "black") +
+  labs(
+    title = "Distribution of p-values after normalization",
+    x = "P-values after normalization",
+    y = "Frequency"
+  )
+
+# before and after normalization
+ggplot(data = dfr_comparison, aes(x = raw, y = norm)) +
+  geom_point(color = "gray50", alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 1, color = "blue", linetype = "dashed", size = 1) +
+  labs(
+    title = "Top 1000 p-values before vs after normalization",
+    x = "P-values before normalization",
+    y = "P-values after normalization"
+  )
 ```
-Conclusion:
+
+**Conclusion:**
+
 comparing the p-values before and after normalization, a paired t-test shows a statistically significant 
 difference between the two, with a p-value of 9.511e-08. This suggests that normalization
  has a significant impact on the p-values.
@@ -490,12 +524,59 @@ difference between the two, with a p-value of 9.511e-08. This suggests that norm
  are observed to be more uniformly distributed compared to the raw pvalues.
  Also, after normalization the gene with the most significant effect on BMI (EIF5) shows an improved
  Adjuested effecy size (from 32% to about 34.61%). Gene with the worst association ( prev. TRG-AS1) changed to 
- "CPLX3", this shows the previous one improved in p-value. 
+ "CPLX3", this shows the previous one improved in p-value. A scatter plot of normalized vs unnormalized pvalues 
+ shows a strong + linear relationship between the two.
+ Since shifts in gene expression profiles distribution may be technical and have biological relevance, the normalization 
+ process results will be more trustworthy, though it is important to always consider other factors when conducting further analyses.
 
+#### 5. Relationship between the fitted and observed values for trust in linear model results
 
+```{r}
+# observed vs fitted values for the most significant gene after normalization
+obs_trusted <- as.numeric(expr_norm[smallest_p_loc_norm, ])
+fit_trusted <- lm(cont_var ~ obs_trusted)
+summary(fit_trusted)
+anova(fit_trusted)
 
+pred_trusted <- predict(fit_trusted)
+res_trusted <- resid(fit_trusted)
 
+# fitted vs observed plot
+plot(pred_trusted, cont_var,
+  pch = 19, col = "lightblue",
+  xlab = "Fitted bmi (from EIF5 expression)",
+  ylab = "Observed bmi",
+  main = "Fitted vs observed — (EIF5), normalized values"
+)
+abline(0, 1, col = "red", lty = 2)
+legend("topright", "y = fitted (perfect fit)", lty = 2, col = "red")
+cor(pred_trusted, cont_var)
 
+# shapiro-wilk test on residuals and diagnostic plots for regression assumptions
+# Normality, equal variance and linearity
+par(mfrow = c(1, 2))
+plot(pred_trusted, res_trusted,
+  main = "Residuals vs Fitted (EIF5)",
+  xlab = "Fitted bmi (from EIF5 expression)",
+  ylab = "Residuals",
+  pch = 19,
+  col = "lightblue"
+)
+abline(h = 0, col = "red", lty = 2)
+
+qqnorm(res_trusted)
+qqline(res_trusted, col = "green")
+shapiro.test(res_trusted) # normalized
+shapiro.test(resid(fit_most)) # unnormalized/raw
+```
+
+**Results:**
+The trustworthy fitted model vs observed show a strong psotive correlation with about 34.6% Adj. R-squared 
+and correlation coefficient of 0.6017. This means that the gene EIF5 can explain about 34.6% of the variation in BMI.
+along with QQ plot, fitted vs residuals shows plots with fairly normal distribution of residuals.(p-value= 0.05035) and it's same
+for the non-normalized data (p-value=0.01553- shapiro.test) with a fair amount of spread.
+In terms of taking the normalized model's results are face values, the regression assumptions are barely
+supported, so i'd suggest the p-value / data be need a second look or at least be interpreted with caution.
 
 
 
